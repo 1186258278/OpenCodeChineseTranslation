@@ -220,14 +220,24 @@ function Write-Header {
     $bunVersion = Get-BunVersion
     $bunDisplay = if ($bunVersion) { "Bun $bunVersion" } else { "Bun 未安装" }
 
-    # 顶部标题栏
+    # 顶部标题栏（从配置读取版本号）
+    $configVersion = "4.8"
+    if (Test-Path $I18N_CONFIG) {
+        try {
+            $configData = Get-Content $I18N_CONFIG -Raw | ConvertFrom-Json
+            if ($configData.version) {
+                $configVersion = $configData.version
+            }
+        } catch { }
+    }
+
     Write-Host ""
     Write-Host "┌──────────────────────────────────────────────────────────────────────────────┐" -ForegroundColor Cyan
     Write-Host "│" -ForegroundColor Cyan -NoNewline
     Write-Host "  OpenCode 中文汉化管理工具 " -ForegroundColor White -NoNewline
     Write-Host "v" -ForegroundColor DarkGray -NoNewline
-    Write-Host "3.2" -ForegroundColor Green -NoNewline
-    Write-Host "                                                " -NoNewline
+    Write-Host "$configVersion " -ForegroundColor Green -NoNewline
+    Write-Host "                                               " -NoNewline
     Write-Host "│" -ForegroundColor Cyan
     Write-Host "│" -ForegroundColor Cyan -NoNewline
     Write-Host "  ────────────────────────────────────────────────────────────────────────────" -ForegroundColor DarkGray -NoNewline
@@ -810,6 +820,23 @@ function Show-VersionInfo {
 
             # 使用 fetch + merge 策略，避免多分支 FETCH_HEAD 冲突
             $success = $false
+
+            # 检查是否有本地修改（汉化补丁等）
+            $hasLocalChanges = $false
+            $statusOutput = git status --porcelain 2>&1
+            if ($statusOutput) {
+                $hasLocalChanges = $true
+            }
+
+            if ($hasLocalChanges) {
+                Write-Host "   → 检测到本地修改，暂存汉化..." -ForegroundColor Yellow
+                $stashOutput = git stash push -m "opencode-i18n-auto-stash" 2>&1
+                $stashSuccess = ($LASTEXITCODE -eq 0)
+                if (!$stashSuccess) {
+                    Write-Host "   → Stash 失败: $stashOutput" -ForegroundColor Red
+                }
+            }
+
             if ($currentBranch) {
                 # 先 fetch 只获取当前分支（不获取其他分支）
                 Write-Host "   → 获取 origin/$currentBranch" -ForegroundColor DarkGray
@@ -821,10 +848,30 @@ function Show-VersionInfo {
                     Write-Host "   → 合并更新" -ForegroundColor DarkGray
                     $mergeOutput = git merge --ff-only "origin/$currentBranch" 2>&1
                     $success = ($LASTEXITCODE -eq 0)
+                    if (!$success) {
+                        # 可能需要本地提交，尝试普通合并
+                        Write-Host "   → 快进失败，尝试普通合并..." -ForegroundColor Yellow
+                        $mergeOutput = git merge "origin/$currentBranch" --no-edit 2>&1
+                        $success = ($LASTEXITCODE -eq 0)
+                    }
+                } else {
+                    # fetch 失败，显示错误
+                    Write-Host "   → Fetch 失败: $fetchOutput" -ForegroundColor Red
                 }
             } else {
                 $pullResult = Invoke-GitCommandWithProgress -Command "pull --no-edit" -Message "   → 拉取代码"
                 $success = $pullResult.Success
+            }
+
+            # 恢复汉化补丁
+            if ($hasLocalChanges -and $stashSuccess) {
+                Write-Host "   → 恢复汉化补丁..." -ForegroundColor Yellow
+                $stashList = git stash list 2>&1
+                $stashName = $stashList | Select-String "opencode-i18n-auto-stash" | Select-Object -First 1
+                if ($stashName) {
+                    $stashIndex = ($stashName.ToString() -split ":")[0].Trim()
+                    git stash pop "$stashIndex" --index 2>&1 | Out-Null
+                }
             }
 
             if (!$success -and $detectedProxy) {
@@ -838,6 +885,12 @@ function Show-VersionInfo {
                     if ($fetchSuccess) {
                         $mergeOutput = git merge --ff-only "origin/$currentBranch" 2>&1
                         $success = ($LASTEXITCODE -eq 0)
+                        if (!$success) {
+                            $mergeOutput = git merge "origin/$currentBranch" --no-edit 2>&1
+                            $success = ($LASTEXITCODE -eq 0)
+                        }
+                    } else {
+                        Write-Host "   → 直连 Fetch 失败: $fetchOutput" -ForegroundColor Red
                     }
                 } else {
                     $pullResult = Invoke-GitCommandWithProgress -Command "pull --no-edit" -Message "   → 直连拉取"
@@ -1797,24 +1850,78 @@ function Update-Source {
         $currentBranch = $branchOutput
     }
 
-    if ($currentBranch) {
-        $pullResult = Invoke-GitCommandWithProgress -Command "pull origin $currentBranch" -Message "   → 拉取代码"
-    } else {
-        $pullResult = Invoke-GitCommandWithProgress -Command "pull" -Message "   → 拉取代码"
+    # 使用 fetch + merge 策略
+    $success = $false
+
+    # 检查是否有本地修改（汉化补丁等）
+    $hasLocalChanges = $false
+    $statusOutput = git status --porcelain 2>&1
+    if ($statusOutput) {
+        $hasLocalChanges = $true
     }
-    $success = $pullResult.Success
+
+    if ($hasLocalChanges) {
+        Write-Host "   → 检测到本地修改，暂存汉化..." -ForegroundColor Yellow
+        $stashOutput = git stash push -m "opencode-i18n-auto-stash" 2>&1
+        $stashSuccess = ($LASTEXITCODE -eq 0)
+        if (!$stashSuccess) {
+            Write-Host "   → Stash 失败: $stashOutput" -ForegroundColor Red
+        }
+    }
+
+    if ($currentBranch) {
+        Write-Host "   → 获取 origin/$currentBranch" -ForegroundColor DarkGray
+        $fetchOutput = git fetch origin "refs/heads/$currentBranch:refs/remotes/origin/$currentBranch" 2>&1
+        $fetchSuccess = ($LASTEXITCODE -eq 0)
+
+        if ($fetchSuccess) {
+            Write-Host "   → 合并更新" -ForegroundColor DarkGray
+            $mergeOutput = git merge --ff-only "origin/$currentBranch" 2>&1
+            $success = ($LASTEXITCODE -eq 0)
+            if (!$success) {
+                $mergeOutput = git merge "origin/$currentBranch" --no-edit 2>&1
+                $success = ($LASTEXITCODE -eq 0)
+            }
+        } else {
+            Write-Host "   → Fetch 失败: $fetchOutput" -ForegroundColor Red
+        }
+    } else {
+        $pullResult = Invoke-GitCommandWithProgress -Command "pull --no-edit" -Message "   → 拉取代码"
+        $success = $pullResult.Success
+    }
+
+    # 恢复汉化补丁
+    if ($hasLocalChanges -and $stashSuccess) {
+        Write-Host "   → 恢复汉化补丁..." -ForegroundColor Yellow
+        $stashList = git stash list 2>&1
+        $stashName = $stashList | Select-String "opencode-i18n-auto-stash" | Select-Object -First 1
+        if ($stashName) {
+            $stashIndex = ($stashName.ToString() -split ":")[0].Trim()
+            git stash pop "$stashIndex" --index 2>&1 | Out-Null
+        }
+    }
 
     if (!$success -and $detectedProxy) {
-        # 如果检测到代理但拉取失败，尝试直连
         Write-StepMessage "代理连接失败，尝试直连..." "WARNING"
         git config --unset http.proxy
         git config --unset https.proxy
         if ($currentBranch) {
-            $pullResult = Invoke-GitCommandWithProgress -Command "pull origin $currentBranch" -Message "   → 直连拉取"
+            $fetchOutput = git fetch origin "refs/heads/$currentBranch:refs/remotes/origin/$currentBranch" 2>&1
+            $fetchSuccess = ($LASTEXITCODE -eq 0)
+            if ($fetchSuccess) {
+                $mergeOutput = git merge --ff-only "origin/$currentBranch" 2>&1
+                $success = ($LASTEXITCODE -eq 0)
+                if (!$success) {
+                    $mergeOutput = git merge "origin/$currentBranch" --no-edit 2>&1
+                    $success = ($LASTEXITCODE -eq 0)
+                }
+            } else {
+                Write-Host "   → 直连 Fetch 失败: $fetchOutput" -ForegroundColor Red
+            }
         } else {
-            $pullResult = Invoke-GitCommandWithProgress -Command "pull" -Message "   → 直连拉取"
+            $pullResult = Invoke-GitCommandWithProgress -Command "pull --no-edit" -Message "   → 直连拉取"
+            $success = $pullResult.Success
         }
-        $success = $pullResult.Success
     }
 
     Pop-Location
@@ -2754,6 +2861,23 @@ function Invoke-OneClickFull {
 
             # 使用 fetch + merge 策略，避免多分支 FETCH_HEAD 冲突
             $success = $false
+
+            # 检查是否有本地修改（汉化补丁等）
+            $hasLocalChanges = $false
+            $statusOutput = git status --porcelain 2>&1
+            if ($statusOutput) {
+                $hasLocalChanges = $true
+            }
+
+            if ($hasLocalChanges) {
+                Write-Host "   → 检测到本地修改，暂存汉化..." -ForegroundColor Yellow
+                $stashOutput = git stash push -m "opencode-i18n-auto-stash" 2>&1
+                $stashSuccess = ($LASTEXITCODE -eq 0)
+                if (!$stashSuccess) {
+                    Write-Host "   → Stash 失败: $stashOutput" -ForegroundColor Red
+                }
+            }
+
             if ($currentBranch) {
                 # 先 fetch 只获取当前分支（不获取其他分支）
                 Write-Host "   → 获取 origin/$currentBranch" -ForegroundColor DarkGray
@@ -2765,10 +2889,30 @@ function Invoke-OneClickFull {
                     Write-Host "   → 合并更新" -ForegroundColor DarkGray
                     $mergeOutput = git merge --ff-only "origin/$currentBranch" 2>&1
                     $success = ($LASTEXITCODE -eq 0)
+                    if (!$success) {
+                        # 可能需要本地提交，尝试普通合并
+                        Write-Host "   → 快进失败，尝试普通合并..." -ForegroundColor Yellow
+                        $mergeOutput = git merge "origin/$currentBranch" --no-edit 2>&1
+                        $success = ($LASTEXITCODE -eq 0)
+                    }
+                } else {
+                    # fetch 失败，显示错误
+                    Write-Host "   → Fetch 失败: $fetchOutput" -ForegroundColor Red
                 }
             } else {
                 $pullResult = Invoke-GitCommandWithProgress -Command "pull --no-edit" -Message "   → 拉取代码"
                 $success = $pullResult.Success
+            }
+
+            # 恢复汉化补丁
+            if ($hasLocalChanges -and $stashSuccess) {
+                Write-Host "   → 恢复汉化补丁..." -ForegroundColor Yellow
+                $stashList = git stash list 2>&1
+                $stashName = $stashList | Select-String "opencode-i18n-auto-stash" | Select-Object -First 1
+                if ($stashName) {
+                    $stashIndex = ($stashName.ToString() -split ":")[0].Trim()
+                    git stash pop "$stashIndex" --index 2>&1 | Out-Null
+                }
             }
 
             if (!$success -and $detectedProxy) {
@@ -2782,6 +2926,12 @@ function Invoke-OneClickFull {
                     if ($fetchSuccess) {
                         $mergeOutput = git merge --ff-only "origin/$currentBranch" 2>&1
                         $success = ($LASTEXITCODE -eq 0)
+                        if (!$success) {
+                            $mergeOutput = git merge "origin/$currentBranch" --no-edit 2>&1
+                            $success = ($LASTEXITCODE -eq 0)
+                        }
+                    } else {
+                        Write-Host "   → 直连 Fetch 失败: $fetchOutput" -ForegroundColor Red
                     }
                 } else {
                     $pullResult = Invoke-GitCommandWithProgress -Command "pull --no-edit" -Message "   → 直连拉取"
