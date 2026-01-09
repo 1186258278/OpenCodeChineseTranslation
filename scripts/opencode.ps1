@@ -718,7 +718,7 @@ function Show-VersionInfo {
             # 步骤1: 检测代理
             Write-StepMessage "检测网络代理..." "INFO"
             $detectedProxy = $null
-            $commonProxyPorts = @(7890, 7891, 10809, 10808, 1087, 1080, 8080)
+            $commonProxyPorts = @(7890, 7891, 10809, 10808, 1087, 1080, 8080, 7897, 7898, 1086, 1081, 7892, 7893, 9090, 8888, 10872)
 
             # 检查常见的代理端口
             foreach ($port in $commonProxyPorts) {
@@ -758,27 +758,36 @@ function Show-VersionInfo {
                 $markedCount = $markedFiles.Count
                 Write-Host "   → 解除 $markedCount 个文件的忽略标记" -ForegroundColor DarkGray
 
-                # 批量处理：一次性解除所有标记（大幅提升速度，2689个文件从分钟级降到秒级）
-                $allPaths = $markedFiles | ForEach-Object { $_.Substring(2) }
-                $result = git update-index --no-assume-unchanged @allPaths 2>&1
-                if ($LASTEXITCODE -eq 0) {
-                    Write-Host "   → 批量完成: $markedCount 个文件" -ForegroundColor Green
-                } else {
-                    # 批量失败时回退到逐个处理（参数过长等极端情况）
-                    Write-Host "   → 批量失败，回退到逐个处理..." -ForegroundColor Yellow
-                    $currentIndex = 0
-                    $progressInterval = if ($markedCount -gt 100) { [math]::Floor($markedCount / 20) } else { 10 }
-                    foreach ($file in $markedFiles) {
-                        $currentIndex++
-                        if ($currentIndex % $progressInterval -eq 0 -or $currentIndex -eq $markedCount) {
-                            $percent = [math]::Floor(($currentIndex / $markedCount) * 100)
-                            Write-Host "`r   → 进度: $percent% ($currentIndex/$markedCount)" -NoNewline
+                # 批量处理：分批解除标记（避免Windows命令行长度限制8191字符）
+                $batchSize = 500  # 每批500个文件
+                $batches = [Math]::Ceiling($markedCount / $batchSize)
+                $completed = 0
+
+                for ($b = 0; $b -lt $batches; $b++) {
+                    $startIdx = $b * $batchSize
+                    $endIdx = [Math]::Min($startIdx + $batchSize - 1, $markedCount - 1)
+                    $batchPaths = $markedFiles[$startIdx..$endIdx] | ForEach-Object { $_.Substring(2) }
+
+                    try {
+                        $null = git update-index --no-assume-unchanged @batchPaths 2>&1
+                        $completed += $batchPaths.Count
+                        $percent = [Math]::Floor(($completed / $markedCount) * 100)
+                        Write-Host "`r   → 批量进度: $percent% ($completed/$markedCount)" -NoNewline
+                    } catch {
+                        # 批量失败时回退到逐个处理剩余文件
+                        Write-Host "`n   → 批量失败，回退到逐个处理..." -ForegroundColor Yellow
+                        for ($i = $startIdx; $i -lt $markedCount; $i++) {
+                            if ($i % $progressInterval -eq 0 -or $i -eq $markedCount - 1) {
+                                $percent = [Math]::Floor((($i + 1) / $markedCount) * 100)
+                                Write-Host "`r   → 进度: $percent% ($($i+1)/$markedCount)" -NoNewline
+                            }
+                            $filePath = $markedFiles[$i].Substring(2)
+                            git update-index --no-assume-unchanged $filePath 2>&1 | Out-Null
                         }
-                        $filePath = $file.Substring(2)
-                        git update-index --no-assume-unchanged $filePath 2>&1 | Out-Null
+                        break
                     }
-                    Write-Host ""
                 }
+                Write-Host ""  # 换行
             } else {
                 Write-Host "   → 无需解除" -ForegroundColor DarkGray
             }
@@ -1712,19 +1721,28 @@ function Update-Source {
         $markedCount = $markedFiles.Count
         Write-Host "   → 解除 $markedCount 个文件的忽略标记" -ForegroundColor DarkGray
 
-        # 批量处理：一次性解除所有标记
-        $allPaths = $markedFiles | ForEach-Object { $_.Substring(2) }
-        $result = git update-index --no-assume-unchanged @allPaths 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "   → 批量完成: $markedCount 个文件" -ForegroundColor Green
-        } else {
-            # 批量失败时回退到逐个处理
-            Write-Host "   → 批量失败，回退到逐个处理..." -ForegroundColor Yellow
-            foreach ($file in $markedFiles) {
-                $filePath = $file.Substring(2)
-                git update-index --no-assume-unchanged $filePath 2>&1 | Out-Null
+        # 批量处理：分批解除标记（避免Windows命令行长度限制）
+        $batchSize = 500
+        $batches = [Math]::Ceiling($markedCount / $batchSize)
+
+        for ($b = 0; $b -lt $batches; $b++) {
+            $startIdx = $b * $batchSize
+            $endIdx = [Math]::Min($startIdx + $batchSize - 1, $markedCount - 1)
+            $batchPaths = $markedFiles[$startIdx..$endIdx] | ForEach-Object { $_.Substring(2) }
+
+            try {
+                $null = git update-index --no-assume-unchanged @batchPaths 2>&1
+            } catch {
+                # 批量失败时回退到逐个处理
+                Write-Host "   → 批量失败，逐个处理..." -ForegroundColor Yellow
+                foreach ($file in $markedFiles) {
+                    $filePath = $file.Substring(2)
+                    git update-index --no-assume-unchanged $filePath 2>&1 | Out-Null
+                }
+                break
             }
         }
+        Write-Host "   → 完成: $markedCount 个文件" -ForegroundColor Green
     } else {
         Write-Host "   → 无需解除" -ForegroundColor DarkGray
     }
@@ -2610,7 +2628,7 @@ function Invoke-OneClickFull {
             # 步骤1: 检测代理
             Write-StepMessage "检测网络代理..." "INFO"
             $detectedProxy = $null
-            $commonProxyPorts = @(7890, 7891, 10809, 10808, 1087, 1080, 8080)
+            $commonProxyPorts = @(7890, 7891, 10809, 10808, 1087, 1080, 8080, 7897, 7898, 1086, 1081, 7892, 7893, 9090, 8888, 10872)
 
             # 检查常见的代理端口
             foreach ($port in $commonProxyPorts) {
@@ -2648,27 +2666,36 @@ function Invoke-OneClickFull {
                 $markedCount = $markedFiles.Count
                 Write-Host "   → 解除 $markedCount 个文件的忽略标记" -ForegroundColor DarkGray
 
-                # 批量处理：一次性解除所有标记（大幅提升速度，2689个文件从分钟级降到秒级）
-                $allPaths = $markedFiles | ForEach-Object { $_.Substring(2) }
-                $result = git update-index --no-assume-unchanged @allPaths 2>&1
-                if ($LASTEXITCODE -eq 0) {
-                    Write-Host "   → 批量完成: $markedCount 个文件" -ForegroundColor Green
-                } else {
-                    # 批量失败时回退到逐个处理（参数过长等极端情况）
-                    Write-Host "   → 批量失败，回退到逐个处理..." -ForegroundColor Yellow
-                    $currentIndex = 0
-                    $progressInterval = if ($markedCount -gt 100) { [math]::Floor($markedCount / 20) } else { 10 }
-                    foreach ($file in $markedFiles) {
-                        $currentIndex++
-                        if ($currentIndex % $progressInterval -eq 0 -or $currentIndex -eq $markedCount) {
-                            $percent = [math]::Floor(($currentIndex / $markedCount) * 100)
-                            Write-Host "`r   → 进度: $percent% ($currentIndex/$markedCount)" -NoNewline
+                # 批量处理：分批解除标记（避免Windows命令行长度限制8191字符）
+                $batchSize = 500  # 每批500个文件
+                $batches = [Math]::Ceiling($markedCount / $batchSize)
+                $completed = 0
+
+                for ($b = 0; $b -lt $batches; $b++) {
+                    $startIdx = $b * $batchSize
+                    $endIdx = [Math]::Min($startIdx + $batchSize - 1, $markedCount - 1)
+                    $batchPaths = $markedFiles[$startIdx..$endIdx] | ForEach-Object { $_.Substring(2) }
+
+                    try {
+                        $null = git update-index --no-assume-unchanged @batchPaths 2>&1
+                        $completed += $batchPaths.Count
+                        $percent = [Math]::Floor(($completed / $markedCount) * 100)
+                        Write-Host "`r   → 批量进度: $percent% ($completed/$markedCount)" -NoNewline
+                    } catch {
+                        # 批量失败时回退到逐个处理剩余文件
+                        Write-Host "`n   → 批量失败，回退到逐个处理..." -ForegroundColor Yellow
+                        for ($i = $startIdx; $i -lt $markedCount; $i++) {
+                            if ($i % $progressInterval -eq 0 -or $i -eq $markedCount - 1) {
+                                $percent = [Math]::Floor((($i + 1) / $markedCount) * 100)
+                                Write-Host "`r   → 进度: $percent% ($($i+1)/$markedCount)" -NoNewline
+                            }
+                            $filePath = $markedFiles[$i].Substring(2)
+                            git update-index --no-assume-unchanged $filePath 2>&1 | Out-Null
                         }
-                        $filePath = $file.Substring(2)
-                        git update-index --no-assume-unchanged $filePath 2>&1 | Out-Null
+                        break
                     }
-                    Write-Host ""
                 }
+                Write-Host ""  # 换行
             } else {
                 Write-Host "   → 无需解除" -ForegroundColor DarkGray
             }
