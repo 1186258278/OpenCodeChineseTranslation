@@ -5,7 +5,7 @@
     "undo the last message": "撤销上一条消息",
     "redo the last message": "重做上一条消息",
     "compact the session": "压缩会话",
-    "unshare a session": "取消分享会话",
+    "description: \"unshare a session\"": "description: \"取消分享会话\"",
     "rename session": "重命名会话",
     "copy session transcript to clipboard": "复制会话记录到剪贴板",
     "export session transcript to file": "导出会话记录到文件",
@@ -25,6 +25,7 @@
     "show help": "显示帮助",
     "show all commands": "显示所有命令",
     "exit the app": "退出应用",
-    "No matching items": "未找到匹配项"
+    "No matching items": "未找到匹配项",
+    "<text fg={theme.textMuted}>No matching items</text>": "<text fg={theme.textMuted}>未找到匹配项</text>"
   }
 }

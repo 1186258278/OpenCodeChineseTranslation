@@ -8,7 +8,7 @@
     "\"Unknown\"": "\"未知\"",
     "title=\"Continue after repeated failures\"": "title=\"连续失败后继续\"",
     "\"This will allow \" + props.request.permission + \" until OpenCode is restarted.\"": "\"这将允许 \" + props.request.permission + \" 直到OpenCode重启。\"",
-    "This will allow following patterns until OpenCode is restarted": "这将允许以下模式直到OpenCode重启",
+    "This will allow the following patterns until OpenCode is restarted": "这将允许以下模式，直到 OpenCode 重启",
     "options={{ confirm: \"Confirm\", cancel: \"Cancel\" }}": "options={{ confirm: \"确认\", cancel: \"取消\" }}",
     "<text fg={theme.text}>Reject permission</text>": "<text fg={theme.text}>拒绝权限</text>",
     "<text fg={theme.textMuted}>Tell OpenCode what to do differently</text>": "<text fg={theme.textMuted}>告诉OpenCode如何处理</text>",
@@ -16,16 +16,12 @@
     "title={`Glob \"`": "title={`通配符 \"`",
     "title={`Grep \"`": "title={`搜索 \"`",
     "title={`List ` + normalizePath": "title={`列出 ` + normalizePath",
-    "Edit {normalizePath": "编辑 {normalizePath",
+    "Edit {normalizePath": "编辑 {normalizePath}",
     "Call tool": "调用工具",
-    "confirm": "确认",
-    "cancel": "取消",
-    "This will allow the following patterns until OpenCode is restarted": "这将允许以下模式，直到 OpenCode 重启",
     "} Task": "} 任务",
     "WebFetch ": "网页获取 ",
     "Exa Web Search": "网络搜索",
     "Exa Code Search": "代码搜索",
-    "Access external directory ": "访问外部目录 ",
-    "确认: \"Confirm\", 取消: \"Cancel\"": "确认: \"确认\", 取消: \"取消\""
+    "Access external directory ": "访问外部目录 "
   }
 }

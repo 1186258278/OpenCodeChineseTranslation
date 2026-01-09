@@ -3,8 +3,8 @@
   "description": "状态对话框",
   "replacements": {
     "Status": "状态",
-    "No 个MCP服务器": "0 个 MCP 服务器",
-    " 个MCP服务器": " 个 MCP 服务器",
-    " 个LSP服务器": " 个 LSP 服务器"
+    "No MCP Servers": "0 个 MCP 服务器",
+    "MCP Servers": "MCP 服务器",
+    "LSP Servers": "LSP 服务器"
   }
 }

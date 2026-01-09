@@ -1,0 +1,7 @@
+{
+  "file": "src/cli/cmd/tui/context/local.tsx",
+  "description": "本地上下文",
+  "replacements": {
+    "provider: \"Connect a provider\"": "provider: \"连接提供商\""
+  }
+}

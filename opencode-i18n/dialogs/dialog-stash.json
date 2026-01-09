@@ -5,10 +5,10 @@
     "title=\"Stash\"": "title=\"存储\"",
     "Press ctrl+d again to confirm": "再次按Ctrl+D确认",
     "delete": "删除",
-    "~{lineCount} lines": "约{lineCount}行",
+    "`~${lineCount} lines`": "`约${lineCount}行`",
     "just now": "刚刚",
-    "{minutes}m ago": "{minutes}分钟前",
-    "{hours}h ago": "{hours}小时前",
-    "{days}d ago": "{days}天前"
+    "`${minutes}m ago`": "`${minutes}分钟前`",
+    "`${hours}h ago`": "`${hours}小时前`",
+    "`${days}d ago`": "`${days}天前`"
   }
 }

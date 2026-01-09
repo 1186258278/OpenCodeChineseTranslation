@@ -5,17 +5,15 @@
     " tokens</text>": " 令牌</text>",
     "% used</text>": "% 已用</text>",
     ", ${errorMcpCount()} error": ", ${errorMcpCount()} 错误",
-    "<text>Connected</text>": "<text>已连接</text>",
-    "<text>Disabled</text>": "<text>已禁用</text>",
-    "<text>Needs auth</text>": "<text>需要认证</text>",
-    "Subagent session": "子智能体会话",
+    ">Connected</Match": ">已连接</Match>",
+    ">Disabled</Match": ">已禁用</Match>",
+    ">Needs auth</Match": ">需要认证</Match>",
     "<b>Context</b>": "<b>上下文</b>",
     "<b>Todo</b>": "<b>待办</b>",
     "Modified Files": "修改的文件",
     "Getting started": "开始使用",
     "Open Code": "OpenCode",
     "Get started": "开始",
-    "LSP": "LSP",
-    "category: \"Session\"": "category: \"会话\""
+    "LSP": "LSP"
   }
 }

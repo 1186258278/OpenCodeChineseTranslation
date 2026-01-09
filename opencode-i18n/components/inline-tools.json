@@ -16,9 +16,6 @@
     "pending=\"Preparing patch...\"": "pending=\"正在准备补丁...\"",
     "pending=\"Updating todos...\"": "pending=\"正在更新待办...\"",
     "pending=\"Asking questions...\"": "pending=\"正在询问问题...\"",
-    "<text fg={theme.textMuted}>{expanded() ? \"Click to collapse\" : \"Click to expand\"}</text>": "<text fg={theme.textMuted}>{expanded() ? \"点击折叠\" : \"点击展开\"}</text>",
-    "Please report an issue.": "请报告问题。",
-    "No matching items": "未找到匹配项",
-    "Use {keybind} for fuzzy search": "使用 {keybind} 进行模糊搜索"
+    "<text fg={theme.textMuted}>{expanded() ? \"Click to collapse\" : \"Click to expand\"}</text>": "<text fg={theme.textMuted}>{expanded() ? \"点击折叠\" : \"点击展开\"}</text>"
   }
 }
