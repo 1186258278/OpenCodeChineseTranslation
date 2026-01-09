@@ -1,5 +1,5 @@
 # ========================================
-# OpenCode 中文汉化版 - 管理工具 v4.8
+# OpenCode 中文汉化版 - 管理工具 v4.9
 # ========================================
 
 # 配置路径 (使用脚本所在目录，自动适配)
@@ -841,18 +841,23 @@ function Show-VersionInfo {
             if ($currentBranch) {
                 # 先 fetch 只获取当前分支（不获取其他分支）
                 Write-Host "   → 获取 origin/$currentBranch" -ForegroundColor DarkGray
-                $fetchOutput = git fetch origin "refs/heads/$currentBranch:refs/remotes/origin/$currentBranch" 2>&1
+                # 使用数组传递参数，避免 PowerShell 字符串插值问题
+                $refspec = "refs/heads/{0}:refs/remotes/origin/{0}" -f $currentBranch
+                $fetchArgs = @("fetch", "origin", $refspec)
+                $fetchOutput = & git @fetchArgs 2>&1
                 $fetchSuccess = ($LASTEXITCODE -eq 0)
 
                 if ($fetchSuccess) {
                     # 然后 merge --ff-only 只快进合并
                     Write-Host "   → 合并更新" -ForegroundColor DarkGray
-                    $mergeOutput = git merge --ff-only "origin/$currentBranch" 2>&1
+                    $mergeArgs = @("merge", "--ff-only", "origin/$currentBranch")
+                    $mergeOutput = & git @mergeArgs 2>&1
                     $success = ($LASTEXITCODE -eq 0)
                     if (!$success) {
                         # 可能需要本地提交，尝试普通合并
                         Write-Host "   → 快进失败，尝试普通合并..." -ForegroundColor Yellow
-                        $mergeOutput = git merge "origin/$currentBranch" --no-edit 2>&1
+                        $mergeArgs = @("merge", "origin/$currentBranch", "--no-edit")
+                        $mergeOutput = & git @mergeArgs 2>&1
                         $success = ($LASTEXITCODE -eq 0)
                     }
                 } else {
@@ -2893,18 +2898,23 @@ function Invoke-OneClickFull {
             if ($currentBranch) {
                 # 先 fetch 只获取当前分支（不获取其他分支）
                 Write-Host "   → 获取 origin/$currentBranch" -ForegroundColor DarkGray
-                $fetchOutput = git fetch origin "refs/heads/$currentBranch:refs/remotes/origin/$currentBranch" 2>&1
+                # 使用数组传递参数，避免 PowerShell 字符串插值问题
+                $refspec = "refs/heads/{0}:refs/remotes/origin/{0}" -f $currentBranch
+                $fetchArgs = @("fetch", "origin", $refspec)
+                $fetchOutput = & git @fetchArgs 2>&1
                 $fetchSuccess = ($LASTEXITCODE -eq 0)
 
                 if ($fetchSuccess) {
                     # 然后 merge --ff-only 只快进合并
                     Write-Host "   → 合并更新" -ForegroundColor DarkGray
-                    $mergeOutput = git merge --ff-only "origin/$currentBranch" 2>&1
+                    $mergeArgs = @("merge", "--ff-only", "origin/$currentBranch")
+                    $mergeOutput = & git @mergeArgs 2>&1
                     $success = ($LASTEXITCODE -eq 0)
                     if (!$success) {
                         # 可能需要本地提交，尝试普通合并
                         Write-Host "   → 快进失败，尝试普通合并..." -ForegroundColor Yellow
-                        $mergeOutput = git merge "origin/$currentBranch" --no-edit 2>&1
+                        $mergeArgs = @("merge", "origin/$currentBranch", "--no-edit")
+                        $mergeOutput = & git @mergeArgs 2>&1
                         $success = ($LASTEXITCODE -eq 0)
                     }
                 } else {
