@@ -718,13 +718,15 @@ function Show-VersionInfo {
             # 步骤1: 检测代理
             Write-StepMessage "检测网络代理..." "INFO"
             $detectedProxy = $null
-            $commonProxyPorts = @(7890, 7891, 10809, 10808, 1087, 1080, 8080, 7897, 7898, 1086, 1081, 7892, 7893, 9090, 8888, 10872)
+            # Clash 端口优先，然后是其他常见端口
+            $commonProxyPorts = @(7897, 7898, 7890, 7891, 7892, 7893, 10809, 10808, 1087, 1080, 1086, 1081, 8080, 9090, 8888, 10872)
 
-            # 检查常见的代理端口
+            # 检查常见的代理端口（增加超时时间确保检测成功）
             foreach ($port in $commonProxyPorts) {
                 try {
                     $tcp = New-Object System.Net.Sockets.TcpClient
-                    $tcp.ReceiveTimeout = 500
+                    $tcp.ReceiveTimeout = 2000  # 增加到2秒
+                    $tcp.SendTimeout = 2000
                     $tcp.Connect("127.0.0.1", $port)
                     $tcp.Close()
                     $detectedProxy = "http://127.0.0.1:$port"
@@ -1683,13 +1685,15 @@ function Update-Source {
     # 步骤1: 检测代理
     Write-StepMessage "检测网络代理..." "INFO"
     $detectedProxy = $null
-    $commonProxyPorts = @(7890, 7891, 10809, 10808, 1087, 1080, 8080)
+    # Clash 端口优先
+    $commonProxyPorts = @(7897, 7898, 7890, 7891, 7892, 7893, 10809, 10808, 1087, 1080, 1086, 1081, 8080, 9090, 8888, 10872)
 
-    # 检查常见的代理端口
+    # 检查常见的代理端口（增加超时时间）
     foreach ($port in $commonProxyPorts) {
         try {
             $tcp = New-Object System.Net.Sockets.TcpClient
-            $tcp.ReceiveTimeout = 500
+            $tcp.ReceiveTimeout = 2000
+            $tcp.SendTimeout = 2000
             $tcp.Connect("127.0.0.1", $port)
             $tcp.Close()
             $detectedProxy = "http://127.0.0.1:$port"
@@ -2628,13 +2632,15 @@ function Invoke-OneClickFull {
             # 步骤1: 检测代理
             Write-StepMessage "检测网络代理..." "INFO"
             $detectedProxy = $null
-            $commonProxyPorts = @(7890, 7891, 10809, 10808, 1087, 1080, 8080, 7897, 7898, 1086, 1081, 7892, 7893, 9090, 8888, 10872)
+            # Clash 端口优先，然后是其他常见端口
+            $commonProxyPorts = @(7897, 7898, 7890, 7891, 7892, 7893, 10809, 10808, 1087, 1080, 1086, 1081, 8080, 9090, 8888, 10872)
 
-            # 检查常见的代理端口
+            # 检查常见的代理端口（增加超时时间确保检测成功）
             foreach ($port in $commonProxyPorts) {
                 try {
                     $tcp = New-Object System.Net.Sockets.TcpClient
-                    $tcp.ReceiveTimeout = 500
+                    $tcp.ReceiveTimeout = 2000  # 增加到2秒
+                    $tcp.SendTimeout = 2000
                     $tcp.Connect("127.0.0.1", $port)
                     $tcp.Close()
                     $detectedProxy = "http://127.0.0.1:$port"
