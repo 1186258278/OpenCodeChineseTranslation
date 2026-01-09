@@ -6,36 +6,47 @@
   "modules": {
     "dialogs": [
       "dialogs/dialog-agent.json",
-      "dialogs/dialog-session.json",
-      "dialogs/dialog-model.json",
-      "dialogs/dialog-provider.json",
+      "dialogs/dialog-alert.json",
+      "dialogs/dialog-command.json",
+      "dialogs/dialog-export.json",
+      "dialogs/dialog-fork.json",
+      "dialogs/dialog-help.json",
+      "dialogs/dialog-message.json",
       "dialogs/dialog-mcp.json",
-      "dialogs/dialog-status.json",
+      "dialogs/dialog-model.json",
+      "dialogs/dialog-prompt.json",
+      "dialogs/dialog-provider.json",
+      "dialogs/dialog-rename.json",
+      "dialogs/dialog-select.json",
+      "dialogs/dialog-session.json",
       "dialogs/dialog-stash.json",
+      "dialogs/dialog-status.json",
+      "dialogs/dialog-subagent.json",
+      "dialogs/dialog-tag.json",
       "dialogs/dialog-theme.json",
       "dialogs/dialog-timeline.json",
-      "dialogs/dialog-fork.json",
-      "dialogs/dialog-subagent.json",
-      "dialogs/dialog-message.json",
-      "dialogs/dialog-tag.json",
-      "dialogs/dialog-command.json",
-      "dialogs/dialog-export.json"
+      "dialogs/dialog-toast.json"
     ],
     "routes": [
       "routes/route-home.json",
-      "routes/route-session.json",
-      "routes/route-permission.json"
+      "routes/route-permission.json",
+      "routes/route-session.json"
     ],
     "components": [
-      "components/component-sidebar.json",
+      "components/command-panel.json",
       "components/component-prompt.json",
-      "components/component-tips.json",
-      "components/component-did-you-know.json"
+      "components/component-question.json",
+      "components/component-sidebar.json",
+      "components/did-you-know.json",
+      "components/inline-tools.json"
     ],
     "common": [
-      "common/toast.json",
+      "common/app-messages.json",
+      "common/common-toast.json",
       "common/error-messages.json",
-      "common/inline-tools.json"
+      "common/fatal-error.json",
+      "common/local-context.json",
+      "common/share-error.json"
     ]
   }
 }

@@ -4,8 +4,8 @@
   "replacements": {
     "title=\"Message Actions\"": "title=\"消息操作\"",
     "title: \"Copy\"": "title: \"复制\"",
-    "Revert": "撤销",
-    "Fork": "分支",
+    "title: \"Revert\"": "title: \"撤销\"",
+    "title: \"Fork\"": "title: \"分支\"",
     "create a new session": "创建新会话",
     "undo messages and file changes": "撤销消息和文件更改"
   }

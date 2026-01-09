@@ -3,8 +3,8 @@
   "description": "问题输入",
   "replacements": {
     "placeholder=\"Type your own answer\"": "placeholder=\"输入你自己的答案\"",
-    "Confirm": "确认",
-    "Review": "审查",
+    ">Confirm</": ">确认</",
+    ">Review</": ">审查</",
     "submit": "提交",
     "dismiss": "关闭"
   }

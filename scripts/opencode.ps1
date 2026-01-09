@@ -4,11 +4,20 @@
 
 # 配置路径 (使用脚本所在目录，自动适配)
 $SCRIPT_DIR = if ($PSScriptRoot) { $PSScriptRoot } else { "." }
-$SRC_DIR = "$SCRIPT_DIR\opencode-zh-CN"
+# 脚本在 scripts/ 子目录中，需要获取项目根目录
+$PROJECT_DIR = if (Test-Path "$SCRIPT_DIR\..\opencode-i18n") {
+    (Resolve-Path "$SCRIPT_DIR\..").Path
+} else {
+    $SCRIPT_DIR
+}
+$SRC_DIR = "$PROJECT_DIR\opencode-zh-CN"
 $PACKAGE_DIR = "$SRC_DIR\packages\opencode"
-$OUT_DIR = $SCRIPT_DIR
+$OUT_DIR = $PROJECT_DIR
 $DOCS_DIR = "$SRC_DIR"
-$I18N_CONFIG = "$OUT_DIR\opencode-i18n.json"
+# 汉化配置（支持模块化结构）
+$I18N_DIR = "$OUT_DIR\opencode-i18n"
+$I18N_CONFIG = "$I18N_DIR\config.json"
+$I18N_CONFIG_OLD = "$OUT_DIR\opencode-i18n.json"  # 回退到单文件模式
 $BACKUP_DIR = "$OUT_DIR\backup"  # 备份目录
 
 # 自动清理 nul 文件（PowerShell 2>$null 问题产生的）
@@ -63,9 +72,11 @@ function Show-Menu {
     $versionInfo = Get-VersionInfo
     if ($versionInfo.HasGit) {
         if ($versionInfo.NeedsUpdate) {
-            Write-ColorOutput Yellow "  版本: $($versionInfo.LocalCommit) → $($versionInfo.RemoteCommit) (有更新)"
+            $remoteMsg = if ($versionInfo.RemoteCommitMessage.Length -gt 20) { $versionInfo.RemoteCommitMessage.Substring(0, 17) + "..." } else { $versionInfo.RemoteCommitMessage }
+            Write-ColorOutput Yellow "  版本: $($versionInfo.LocalCommit) → $($versionInfo.RemoteCommit) ($remoteMsg)"
         } else {
-            Write-ColorOutput Green "  版本: $($versionInfo.LocalCommit) (已最新)"
+            $localMsg = if ($versionInfo.LocalCommitMessage.Length -gt 25) { $versionInfo.LocalCommitMessage.Substring(0, 22) + "..." } else { $versionInfo.LocalCommitMessage }
+            Write-ColorOutput Green "  版本: $($versionInfo.LocalCommit) ($localMsg)"
         }
     }
 
@@ -88,8 +99,8 @@ function Show-Menu {
     Write-ColorOutput Cyan "  [2]  验证汉化      [3]  调试工具"
     Write-ColorOutput DarkGray "      检查汉化效果          诊断问题"
     Write-Output ""
-    Write-ColorOutput Cyan "  [4]  版本检测      [5]  备份版本"
-    Write-ColorOutput DarkGray "      检查更新状态          保存当前版本"
+    Write-ColorOutput Cyan "  [4]  版本检测      [5]  备份版本      [L]  更新日志"
+    Write-ColorOutput DarkGray "      检查更新状态          保存当前版本          查看提交记录"
     Write-Output ""
     Write-ColorOutput DarkGray "  [6]  高级菜单"
     Write-ColorOutput DarkGray "      → 更多专业功能（拉取/编译/恢复/清理等）"
@@ -106,8 +117,8 @@ function Show-AdvancedMenu {
     Write-ColorOutput Green "  [1] 拉取代码    [2] 应用汉化    [3] 编译程序"
     Write-ColorOutput DarkGray "      获取最新      只汉化不拉取   只编译不汉化"
     Write-Output ""
-    Write-ColorOutput Yellow "  [4] 版本检测    [5] 备份版本    [6] 恢复备份"
-    Write-ColorOutput DarkGray "      检查Git状态   保存备份       选择性恢复"
+    Write-ColorOutput Yellow "  [4] 版本检测    [5] 备份版本    [6] 恢复备份    [H] 更新日志"
+    Write-ColorOutput DarkGray "      检查Git状态   保存备份       选择性恢复      查看提交记录"
     Write-Output ""
     Write-ColorOutput Red "  [R] 源码恢复"
     Write-ColorOutput DarkGray "      → 强制重置到原始代码（丢失所有修改）"
@@ -150,16 +161,92 @@ function Show-Separator {
 }
 
 function Get-I18NConfig {
-    if (!(Test-Path $I18N_CONFIG)) {
-        Write-ColorOutput Red "[错误] 汉化配置文件不存在: $I18N_CONFIG"
+    <#
+    .SYNOPSIS
+        加载汉化配置（支持模块化结构）
+    .DESCRIPTION
+        优先加载模块化配置（opencode-i18n/config.json），
+        如果不存在则回退到单文件模式（opencode-i18n.json）
+    #>
+    # 模块化配置路径
+    $configPath = "$I18N_DIR\config.json"
+
+    if (!(Test-Path $configPath)) {
+        Write-ColorOutput Yellow "[提示] 模块化配置不存在: $configPath"
+        Write-ColorOutput Yellow "正在尝试单文件模式..."
+        # 回退到单文件模式
+        if (!(Test-Path $I18N_CONFIG_OLD)) {
+            Write-ColorOutput Red "[错误] 单文件配置也不存在: $I18N_CONFIG_OLD"
+            return $null
+        }
+        try {
+            $json = Get-Content $I18N_CONFIG_OLD -Raw -Encoding UTF8
+            $config = $json | ConvertFrom-Json
+            Write-ColorOutput Green "已加载单文件配置"
+            return $config
+        } catch {
+            Write-ColorOutput Red "[错误] 单文件配置解析失败"
+            return $null
+        }
+    }
+
+    try {
+        # 读取主配置
+        $mainConfig = Get-Content $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    } catch {
+        Write-ColorOutput Red "[错误] 主配置文件解析失败: $configPath"
         return $null
     }
-    try {
-        $json = Get-Content $I18N_CONFIG -Raw -Encoding UTF8
-        return $json | ConvertFrom-Json
-    } catch {
-        Write-ColorOutput Red "[错误] 汉化配置文件解析失败"
-        return $null
+
+    # 加载所有模块文件
+    $allModules = @{}
+
+    # 辅助函数：加载模块列表
+    function Load-Modules {
+        param(
+            [string]$Category,
+            [array]$ModuleList
+        )
+        foreach ($module in $ModuleList) {
+            $modulePath = "$I18N_DIR\$module"
+            if (Test-Path $modulePath) {
+                try {
+                    $moduleContent = Get-Content $modulePath -Raw -Encoding UTF8 | ConvertFrom-Json
+                    # 生成模块名（从文件名提取，不含扩展名）
+                    $moduleName = [System.IO.Path]::GetFileNameWithoutExtension($module)
+                    # 添加分类前缀以避免同名冲突
+                    $moduleKey = "$Category-$moduleName"
+                    $allModules[$moduleKey] = $moduleContent
+                } catch {
+                    Write-ColorOutput Yellow "[警告] 模块加载失败: $module"
+                }
+            } else {
+                Write-ColorOutput Yellow "[警告] 模块文件不存在: $modulePath"
+            }
+        }
+    }
+
+    # 加载各类模块
+    if ($mainConfig.modules.dialogs) {
+        Load-Modules -Category "dialogs" -ModuleList $mainConfig.modules.dialogs
+    }
+    if ($mainConfig.modules.routes) {
+        Load-Modules -Category "routes" -ModuleList $mainConfig.modules.routes
+    }
+    if ($mainConfig.modules.components) {
+        Load-Modules -Category "components" -ModuleList $mainConfig.modules.components
+    }
+    if ($mainConfig.modules.common) {
+        Load-Modules -Category "common" -ModuleList $mainConfig.modules.common
+    }
+
+    # 返回整合后的配置（兼容旧格式）
+    return @{
+        version = $mainConfig.version
+        description = $mainConfig.description
+        lastUpdate = $mainConfig.lastUpdate
+        patches = $allModules  # 使用 patches 键保持兼容性
+        modules = $allModules  # 新增 modules 键
     }
 }
 
@@ -170,15 +257,62 @@ function Get-VersionInfo {
     .SYNOPSIS
         获取版本信息，对比本地和远程
     #>
+    if (!(Test-Path $SRC_DIR)) {
+        return @{
+            LocalCommit = "未知"
+            RemoteCommit = "未知"
+            NeedsUpdate = $false
+            HasGit = $false
+            SourceDirExists = $false
+        }
+    }
+
     Push-Location $SRC_DIR
 
+    # 获取本地版本（确保只取成功输出的字符串）
     $localCommit = git rev-parse HEAD 2>&1
-    $localCommitShort = if ($localCommit) { $localCommit.Substring(0, 8) } else { "未知" }
+    $localCommit = if ($localCommit -is [System.Management.Automation.ErrorRecord]) { $null } else { $localCommit }
+    $localCommitShort = if ($localCommit) { $localCommit.Substring(0, [Math]::Min(8, $localCommit.Length)) } else { "未知" }
+
+    # 获取本地提交消息
+    $localCommitMsg = git log -1 --pretty=format:"%s" HEAD 2>&1
+    $localCommitMsg = if ($localCommitMsg -is [System.Management.Automation.ErrorRecord]) { "未知" } else { $localCommitMsg }
+    if ($localCommitMsg.Length -gt 50) { $localCommitMsg = $localCommitMsg.Substring(0, 47) + "..." }
+
+    # 获取本地提交日期（转换为北京时间 UTC+8）
+    $localCommitDateRaw = git log -1 --pretty=format:"%ci" HEAD 2>&1
+    $localCommitDateRaw = if ($localCommitDateRaw -is [System.Management.Automation.ErrorRecord]) { $null } else { $localCommitDateRaw }
+    $localCommitDate = if ($localCommitDateRaw) {
+        try {
+            $dt = [DateTime]::Parse($localCommitDateRaw)
+            $dt.ToUniversalTime().AddHours(8).ToString("yyyy-MM-dd HH:mm")
+        } catch {
+            "未知"
+        }
+    } else { "未知" }
 
     # 获取远程最新版本
     $null = git fetch origin --quiet 2>&1
     $remoteCommit = git rev-parse origin/dev 2>&1
-    $remoteCommitShort = if ($remoteCommit) { $remoteCommit.Substring(0, 8) } else { "未知" }
+    $remoteCommit = if ($remoteCommit -is [System.Management.Automation.ErrorRecord]) { $null } else { $remoteCommit }
+    $remoteCommitShort = if ($remoteCommit) { $remoteCommit.Substring(0, [Math]::Min(8, $remoteCommit.Length)) } else { "未知" }
+
+    # 获取远程提交消息
+    $remoteCommitMsg = git log -1 --pretty=format:"%s" origin/dev 2>&1
+    $remoteCommitMsg = if ($remoteCommitMsg -is [System.Management.Automation.ErrorRecord]) { "未知" } else { $remoteCommitMsg }
+    if ($remoteCommitMsg.Length -gt 50) { $remoteCommitMsg = $remoteCommitMsg.Substring(0, 47) + "..." }
+
+    # 获取远程提交日期（转换为北京时间 UTC+8）
+    $remoteCommitDateRaw = git log -1 --pretty=format:"%ci" origin/dev 2>&1
+    $remoteCommitDateRaw = if ($remoteCommitDateRaw -is [System.Management.Automation.ErrorRecord]) { $null } else { $remoteCommitDateRaw }
+    $remoteCommitDate = if ($remoteCommitDateRaw) {
+        try {
+            $dt = [DateTime]::Parse($remoteCommitDateRaw)
+            $dt.ToUniversalTime().AddHours(8).ToString("yyyy-MM-dd HH:mm")
+        } catch {
+            "未知"
+        }
+    } else { "未知" }
 
     # 检查是否需要更新
     $needsUpdate = $false
@@ -190,9 +324,14 @@ function Get-VersionInfo {
 
     return @{
         LocalCommit = $localCommitShort
+        LocalCommitMessage = $localCommitMsg
+        LocalCommitDate = $localCommitDate
         RemoteCommit = $remoteCommitShort
+        RemoteCommitMessage = $remoteCommitMsg
+        RemoteCommitDate = $remoteCommitDate
         NeedsUpdate = $needsUpdate
         HasGit = (Test-Path "$SRC_DIR\.git")
+        SourceDirExists = $true
     }
 }
 
@@ -205,6 +344,18 @@ function Show-VersionInfo {
 
     $info = Get-VersionInfo
 
+    # 检查源码目录是否存在
+    if (!$info.SourceDirExists) {
+        Write-ColorOutput Red "   源码目录不存在"
+        Write-Output "   期望路径: $SRC_DIR"
+        Write-Output ""
+        Write-ColorOutput Yellow "   请先初始化子模块："
+        Write-ColorOutput Cyan "   git submodule update --init opencode-zh-CN"
+        Write-Output ""
+        Read-Host "按回车键继续"
+        return
+    }
+
     if (!$info.HasGit) {
         Write-ColorOutput Red "   不是一个 git 仓库"
         Write-Output ""
@@ -212,8 +363,15 @@ function Show-VersionInfo {
         return
     }
 
-    Write-Output "   本地版本: $($info.LocalCommit)"
-    Write-Output "   远程版本: $($info.RemoteCommit)"
+    Write-Output "   本地版本:"
+    Write-Output "     Commit: $($info.LocalCommit)"
+    Write-Output "     消息: $($info.LocalCommitMessage)"
+    Write-Output "     时间: $($info.LocalCommitDate)"
+    Write-Output ""
+    Write-Output "   远程版本:"
+    Write-Output "     Commit: $($info.RemoteCommit)"
+    Write-Output "     消息: $($info.RemoteCommitMessage)"
+    Write-Output "     时间: $($info.RemoteCommitDate)"
     Write-Output ""
 
     if ($info.NeedsUpdate) {
@@ -225,6 +383,388 @@ function Show-VersionInfo {
 
     Write-Output ""
     Read-Host "按回车键继续"
+}
+
+function Show-Changelog {
+    <#
+    .SYNOPSIS
+        查看更新日志（交互式）
+    .DESCRIPTION
+        显示最近提交记录，支持选择查看详情、打开浏览器
+    #>
+    $info = Get-VersionInfo
+
+    # 检查源码目录是否存在
+    if (!$info.SourceDirExists) {
+        Write-Header
+        Show-Separator
+        Write-Output "   更新日志"
+        Show-Separator
+        Write-Output ""
+        Write-ColorOutput Red "   源码目录不存在"
+        Write-Output "   期望路径: $SRC_DIR"
+        Write-Output ""
+        Write-ColorOutput Yellow "   请先初始化子模块："
+        Write-ColorOutput Cyan "   git submodule update --init opencode-zh-CN"
+        Write-Output ""
+        Read-Host "按回车键继续"
+        return
+    }
+
+    if (!$info.HasGit) {
+        Write-Header
+        Show-Separator
+        Write-Output "   更新日志"
+        Show-Separator
+        Write-Output ""
+        Write-ColorOutput Red "   不是一个 git 仓库"
+        Write-Output ""
+        Read-Host "按回车键继续"
+        return
+    }
+
+    # 获取远程仓库 URL（用于打开浏览器）
+    $repoUrl = $null
+    Push-Location $SRC_DIR
+    $remoteUrl = git remote get-url origin 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        # 转换为浏览器 URL
+        if ($remoteUrl -match "github\.com[:/](.+?)\.git") {
+            $repoUrl = "https://github.com/$($matches[1])"
+        } elseif ($remoteUrl -match "github\.com[:/](.+)") {
+            $repoUrl = "https://github.com/$($matches[1])"
+        }
+    }
+    Pop-Location
+
+    # 主循环
+    do {
+        Write-Header
+        Show-Separator
+        Write-Output "   更新日志"
+        Show-Separator
+        Write-Output ""
+
+        Push-Location $SRC_DIR
+
+        # 获取最近15条提交（更多信息）
+        $logFormat = "%H|%ci|%an|%s"
+        $commitLogs = git log -15 --pretty=format:"$logFormat" HEAD 2>&1
+
+        if ($LASTEXITCODE -ne 0) {
+            Pop-Location
+            Write-ColorOutput Red "   获取提交日志失败"
+            Write-Output ""
+            Read-Host "按回车键继续"
+            return
+        }
+
+        Pop-Location
+
+        # 解析日志到列表
+        $commits = @()
+        $logs = $commitLogs -split "`n" | Where-Object { $_ -match "^[a-f0-9]+\|" }
+
+        foreach ($log in $logs) {
+            $parts = $log -split "\|", 4
+            if ($parts.Count -ge 4) {
+                $commits += @{
+                    Hash = $parts[0]
+                    ShortHash = $parts[0].Substring(0, 8)
+                    Time = $parts[1]
+                    Author = $parts[2]
+                    Message = $parts[3]
+                }
+            }
+        }
+
+        # 获取文件变更统计
+        Push-Location $SRC_DIR
+        for ($i = 0; $i -lt $commits.Count; $i++) {
+            $stat = git diff-tree --shortstat $commits[$i].Hash 2>&1
+            if ($stat -match "(\d+) file.*?(\d+) insert.*?(\d+) delete") {
+                $commits[$i].Files = $matches[1]
+                $commits[$i].Insertions = $matches[2]
+                $commits[$i].Deletions = $matches[3]
+            } elseif ($stat -match "(\d+) file.*?(\d+) insert") {
+                $commits[$i].Files = $matches[1]
+                $commits[$i].Insertions = $matches[2]
+                $commits[$i].Deletions = "0"
+            } else {
+                $commits[$i].Files = "-"
+                $commits[$i].Insertions = "-"
+                $commits[$i].Deletions = "-"
+            }
+        }
+        Pop-Location
+
+        # 格式化时间函数（转换为北京时间 UTC+8）
+        function Format-CommitTime {
+            param([string]$isoTime)
+            try {
+                # 解析 ISO 8601 时间（包含时区）
+                $commitDate = [DateTime]::Parse($isoTime)
+
+                # 转换为北京时间 (UTC+8)
+                $beijingTime = $commitDate.ToUniversalTime().AddHours(8)
+
+                # 计算相对时间（基于本地时间）
+                $localNow = Get-Date
+                $diff = $localNow - $commitDate
+
+                # 格式化北京时间
+                $timeStr = $beijingTime.ToString("MM-dd HH:mm")
+
+                # 相对时间显示
+                if ($diff.TotalDays -lt 1) {
+                    if ($diff.TotalHours -lt 1) {
+                        if ($diff.TotalMinutes -lt 1) {
+                            return "$timeStr (刚刚)"
+                        }
+                        return "$timeStr ($([int]$diff.TotalMinutes)分钟前)"
+                    }
+                    return "$timeStr ($([int]$diff.TotalHours)小时前)"
+                } elseif ($diff.TotalDays -lt 7) {
+                    return "$timeStr ($([int]$diff.TotalDays)天前)"
+                }
+
+                return $beijingTime.ToString("yyyy-MM-dd HH:mm")
+            } catch {
+                return $isoTime
+            }
+        }
+
+        # 显示版本状态
+        if ($info.NeedsUpdate) {
+            $newCommits = git log --oneline "$($info.LocalCommit)..$($info.RemoteCommit)" 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                $newCount = ($newCommits -split "`n" | Where-Object { $_ -match "^[a-f0-9]+" }).Count
+                Write-ColorOutput Yellow "   √ 有 $newCount 个新提交 | 本地: $($info.LocalCommit)"
+            }
+        } else {
+            Write-ColorOutput Green "   ✓ 已是最新版本 | $($info.LocalCommit)"
+        }
+        Write-Output ""
+
+        # 显示提交列表
+        Write-ColorOutput Cyan "   ┌────────────────────────────────────────────────────────────────────────"
+        Write-ColorOutput Cyan "   │  #  Hash      │ 作者    │ 时间     │ 变更   │ 消息"
+        Write-ColorOutput Cyan "   ├────────────────────────────────────────────────────────────────────────"
+
+        $localFound = $false
+        for ($i = 0; $i -lt $commits.Count; $i++) {
+            $c = $commits[$i]
+            $num = $i + 1
+
+            # 检查是否是本地版本
+            $isLocal = $c.Hash.StartsWith($info.LocalCommit)
+            if ($isLocal) { $localFound = $true }
+
+            # 格式化消息
+            $msg = if ($c.Message.Length -gt 28) { $c.Message.Substring(0, 25) + "..." } else { $c.Message }
+
+            # 格式化作者名
+            $author = if ($c.Author.Length -gt 6) { $c.Author.Substring(0, 6) } else { $c.Author }
+
+            # 格式化变更
+            $changes = if ($c.Files -ne "-") { "+$($c.Insertions)/-$($c.Deletions)" } else { "-" }
+
+            # 格式化时间（相对时间）
+            $timeDisplay = Format-CommitTime $c.Time
+
+            # 输出行
+            if ($isLocal) {
+                Write-ColorOutput Yellow ("   │  {0}. [{1}] │ {2,-6} │ {3,-7} │ {4,-6} │ {5}" -f $num, $c.ShortHash, $author, $timeDisplay, $changes, $msg)
+            } else {
+                Write-Output ("   │  {0}. [{1}] │ {2,-6} │ {3,-7} │ {4,-6} │ {5}" -f $num, $c.ShortHash, $author, $timeDisplay, $changes, $msg)
+            }
+        }
+
+        Write-ColorOutput Cyan "   └────────────────────────────────────────────────────────────────────────"
+        Write-Output ""
+
+        # 如果本地版本不在列表中
+        if (!$localFound) {
+            Write-ColorOutput DarkGray "   (本地版本不在最近15条内)"
+            Write-Output ""
+        }
+
+        # 操作提示
+        Write-ColorOutput Cyan "   操作:"
+        Write-Output "     [1-15] 查看提交详情"
+        if ($repoUrl) {
+            Write-Output "     [O]    在浏览器中打开最新提交"
+        }
+        Write-Output "     [R]    刷新列表"
+        Write-Output "     [0]    返回主菜单"
+        Write-Output ""
+
+        $choice = Read-Host "   请选择"
+
+        # 处理选择
+        if ($choice -match "^\d+$" -and [int]$choice -ge 1 -and [int]$choice -le $commits.Count) {
+            $idx = [int]$choice - 1
+            Show-CommitDetail -Commit $commits[$idx] -RepoUrl $repoUrl
+        } elseif ($choice -eq "O" -or $choice -eq "o") {
+            if ($repoUrl -and $commits.Count -gt 0) {
+                $url = "$repoUrl/commit/$($commits[0].Hash)"
+                Start-Process $url
+                Write-ColorOutput Green "   已打开浏览器: $url"
+                Write-Output ""
+                Read-Host "   按回车继续"
+            } else {
+                Write-ColorOutput Red "   无法获取仓库 URL"
+                Write-Output ""
+                Read-Host "   按回车继续"
+            }
+        } elseif ($choice -ne "R" -and $choice -ne "r" -and $choice -ne "0") {
+            Write-ColorOutput DarkGray "   无效选择"
+            Start-Sleep -Milliseconds 500
+        }
+
+    } while ($choice -eq "R" -or $choice -eq "r" -or ($choice -match "^\d+$" -and [int]$choice -ge 1 -and [int]$choice -le $commits.Count) -or $choice -eq "O" -or $choice -eq "o")
+}
+
+function Show-CommitDetail {
+    <#
+    .SYNOPSIS
+        显示单个提交的详细信息
+    #>
+    param(
+        [hashtable]$Commit,
+        [string]$RepoUrl
+    )
+
+    Write-Header
+    Show-Separator
+    Write-Output "   提交详情"
+    Show-Separator
+    Write-Output ""
+
+    # 基本信息
+    Write-ColorOutput Cyan "   Commit: $($Commit.ShortHash)"
+    Write-ColorOutput DarkGray "   $($Commit.Hash)"
+    Write-Output ""
+    Write-ColorOutput Cyan "   作者: $($Commit.Author)"
+
+    # 格式化时间
+    $formattedTime = Format-CommitTime $Commit.Time
+    Write-ColorOutput Cyan "   时间: $formattedTime"
+    Write-Output ""
+    Write-ColorOutput Cyan "   消息:"
+    Write-ColorOutput White ("   $($Commit.Message)")
+    Write-Output ""
+
+    # 变更统计
+    Write-ColorOutput Cyan "   变更:"
+    Write-ColorOutput DarkGray ("   文件: $($Commit.Files) | +$($Commit.Insertions)行 | -$($Commit.Deletions)行")
+    Write-Output ""
+
+    # 获取变更的文件列表
+    Push-Location $SRC_DIR
+    $fileChanges = git show --name-status --pretty="" $Commit.Hash 2>&1 | Where-Object { $_ -match "^[MAD]" }
+    Pop-Location
+
+    if ($fileChanges) {
+        Write-ColorOutput Cyan "   文件列表:"
+        foreach ($change in $fileChanges) {
+            $parts = $change -split "`t"
+            $status = $parts[0]
+            $file = if ($parts.Count -gt 1) { $parts[1] } else { "" }
+
+            $statusText = switch ($status) {
+                "M" { "修改" }
+                "A" { "新增" }
+                "D" { "删除" }
+                "R" { "重命名" }
+                "C" { "复制" }
+                default { $status }
+            }
+            $color = switch ($status) {
+                "A" { "Green" }
+                "D" { "Red" }
+                "M" { "Yellow" }
+                default { "DarkGray" }
+            }
+
+            # 只显示相对路径
+            $displayFile = if ($file -match "packages/opencode/(.+)") { $matches[1] } else { $file }
+            if ($displayFile.Length -gt 50) {
+                $displayFile = "..." + $displayFile.Substring($displayFile.Length - 47)
+            }
+
+            Write-ColorOutput $color ("     [$statusText] $displayFile")
+        }
+        Write-Output ""
+    }
+
+    # 操作选项
+    Write-ColorOutput Cyan "   操作:"
+    if ($RepoUrl) {
+        $url = "$RepoUrl/commit/$($Commit.Hash)"
+        Write-Output "     [O] 在浏览器中打开"
+        Write-ColorOutput DarkGray "         $url"
+    }
+    Write-Output "     [H] 查看完整 diff"
+    Write-Output "     [0] 返回"
+    Write-Output ""
+
+    $detailChoice = Read-Host "   请选择"
+
+    if ($detailChoice -eq "O" -or $detailChoice -eq "o") {
+        if ($RepoUrl) {
+            Start-Process $url
+            Write-ColorOutput Green "   已打开浏览器"
+            Write-Output ""
+            Read-Host "   按回车继续"
+        }
+    } elseif ($detailChoice -eq "H" -or $detailChoice -eq "h") {
+        # 显示完整 diff
+        Write-Output ""
+        Write-ColorOutput Cyan "   完整 Diff:"
+        Write-Output ""
+
+        Push-Location $SRC_DIR
+        $diff = git show $Commit.Hash 2>&1
+        Pop-Location
+
+        # 分页显示
+        $lines = $diff -split "`n"
+        $page = 0
+        $pageSize = 30
+
+        for ($i = 0; $i -lt $lines.Count; $i += $pageSize) {
+            Clear-Host
+            Write-Header
+            Show-Separator
+            Write-Output "   Diff: $($Commit.ShortHash) - 第 $($page + 1) 页"
+            Show-Separator
+            Write-Output ""
+
+            $end = [Math]::Min($i + $pageSize, $lines.Count)
+            for ($j = $i; $j -lt $end; $j++) {
+                $line = $lines[$j]
+                if ($line -match "^[\+\-]") {
+                    if ($line -match "^\+") {
+                        Write-ColorOutput Green $line
+                    } else {
+                        Write-ColorOutput Red $line
+                    }
+                } else {
+                    Write-Output $line
+                }
+            }
+
+            Write-Output ""
+            if ($end -lt $lines.Count) {
+                Read-Host "按回车继续..."
+                $page++
+            } else {
+                Read-Host "到底了，按回车返回"
+                break
+            }
+        }
+    }
 }
 
 function Backup-All {
@@ -783,47 +1323,118 @@ function Apply-SinglePatch {
 }
 
 function Apply-CommandPanelPatch {
+    <#
+    .SYNOPSIS
+        应用命令面板汉化补丁
+    .DESCRIPTION
+        在模块化配置中查找 command-panel 模块并应用
+    #>
     $config = Get-I18NConfig
-    if (!$config -or !$config.patches.commandPanel) {
-        Write-ColorOutput Red "[错误] 无法加载命令面板汉化配置"
+    if (!$config) {
+        Write-ColorOutput Red "[错误] 无法加载汉化配置"
         return
     }
 
-    Write-ColorOutput Yellow "[1/5] 应用命令面板汉化..."
+    # 在模块化配置中查找 command-panel 模块
+    # 可能的键名: commandPanel (旧格式) 或 components-command-panel (新格式)
+    $patch = $null
+    $patchKey = $null
 
-    $patch = $config.patches.commandPanel
+    if ($config.patches) {
+        # 尝试新格式（带分类前缀）
+        if ($config.patches["components-command-panel"]) {
+            $patchKey = "components-command-panel"
+            $patch = $config.patches[$patchKey]
+        }
+        # 尝试旧格式
+        elseif ($config.patches.PSObject.Properties.Name -contains "commandPanel") {
+            $patchKey = "commandPanel"
+            $patch = $config.patches.$patchKey
+        }
+    }
+
+    if (!$patch) {
+        Write-ColorOutput Red "[错误] 无法找到命令面板汉化配置"
+        Write-ColorOutput Yellow "请检查 opencode-i18n/components/command-panel.json 是否存在"
+        return
+    }
+
+    Write-ColorOutput Yellow "[1/$($config.patches.Count)] 应用命令面板汉化..."
+
     $replacements = @{}
 
     # 将 JSON 对象转换为 hashtable
-    $patch.replacements.PSObject.Properties | ForEach-Object {
-        $replacements[$_.Name] = $_.Value
+    if ($patch.replacements) {
+        if ($patch.replacements -is [System.Management.Automation.PSCustomObject]) {
+            $patch.replacements.PSObject.Properties | ForEach-Object {
+                $replacements[$_.Name] = $_.Value
+            }
+        } elseif ($patch.replacements -is [hashtable]) {
+            $replacements = $patch.replacements
+        }
     }
 
     Apply-SinglePatch -Name "命令面板" -File $patch.file -Replacements $replacements -Description $patch.description
 }
 
 function Apply-OtherPatches {
+    <#
+    .SYNOPSIS
+        应用除命令面板外的其他汉化补丁
+    .DESCRIPTION
+        遍历所有模块并应用汉化，排除已单独处理的命令面板
+    #>
     $config = Get-I18NConfig
     if (!$config -or !$config.patches) {
         Write-ColorOutput Red "[错误] 无法加载汉化配置"
         return
     }
 
-    # 获取所有模块，排除 commandPanel（已单独处理）
-    $allModules = @($config.patches.PSObject.Properties.Name | Where-Object { $_ -ne "commandPanel" })
+    # 获取所有模块，排除命令面板（已单独处理）
+    # 兼容新旧格式：commandPanel (旧) 和 components-command-panel (新)
+    $allModules = @()
+
+    # 判断 patches 是否是 hashtable
+    if ($config.patches -is [hashtable]) {
+        $allModules = @($config.patches.Keys | Where-Object {
+            $_ -ne "commandPanel" -and $_ -ne "components-command-panel"
+        })
+    } else {
+        # PSObject 格式（旧配置）
+        $allModules = @($config.patches.PSObject.Properties.Name | Where-Object {
+            $_ -ne "commandPanel" -and $_ -ne "components-command-panel"
+        })
+    }
+
     $totalCount = $allModules.Count
     $currentIndex = 0
 
     foreach ($patchKey in $allModules) {
         $currentIndex++
-        $patch = $config.patches.$patchKey
+        $patch = $null
+
+        # 兼容 hashtable 和 PSObject
+        if ($config.patches -is [hashtable]) {
+            $patch = $config.patches[$patchKey]
+        } else {
+            $patch = $config.patches.$patchKey
+        }
+
         if (!$patch) { continue }
 
         Write-ColorOutput Yellow "[$currentIndex/$totalCount] 应用 $($patch.description)..."
 
         $replacements = @{}
-        $patch.replacements.PSObject.Properties | ForEach-Object {
-            $replacements[$_.Name] = $_.Value
+
+        # 将 replacements 转换为 hashtable
+        if ($patch.replacements) {
+            if ($patch.replacements -is [System.Management.Automation.PSCustomObject]) {
+                $patch.replacements.PSObject.Properties | ForEach-Object {
+                    $replacements[$_.Name] = $_.Value
+                }
+            } elseif ($patch.replacements -is [hashtable]) {
+                $replacements = $patch.replacements
+            }
         }
 
         Apply-SinglePatch -Name $patchKey -File $patch.file -Replacements $replacements -Description $patch.description
@@ -858,8 +1469,25 @@ function Test-I18NPatches {
     Write-ColorOutput Cyan "正在验证汉化结果..."
     Write-Output ""
 
-    foreach ($patchKey in $config.patches.PSObject.Properties.Name) {
-        $patch = $config.patches.$patchKey
+    # 获取所有模块键名（兼容 hashtable 和 PSObject）
+    $patchKeys = @()
+    if ($config.patches -is [hashtable]) {
+        $patchKeys = @($config.patches.Keys)
+    } else {
+        $patchKeys = @($config.patches.PSObject.Properties.Name)
+    }
+
+    foreach ($patchKey in $patchKeys) {
+        $patch = $null
+        # 兼容 hashtable 和 PSObject
+        if ($config.patches -is [hashtable]) {
+            $patch = $config.patches[$patchKey]
+        } else {
+            $patch = $config.patches.$patchKey
+        }
+
+        if (!$patch -or !$patch.file) { continue }
+
         $targetFile = "$PACKAGE_DIR\$($patch.file)"
 
         if (!(Test-Path $targetFile)) {
@@ -871,9 +1499,28 @@ function Test-I18NPatches {
         $patchPassed = $true
         $patchFailed = @()
 
-        foreach ($replacement in $patch.replacements.PSObject.Properties) {
+        # 获取 replacements
+        $replacements = $patch.replacements
+        if ($replacements -is [System.Management.Automation.PSCustomObject]) {
+            $replacementsProps = $replacements.PSObject.Properties
+        } elseif ($replacements -is [hashtable]) {
+            $replacementsProps = $replacements.GetEnumerator()
+        } else {
+            continue
+        }
+
+        foreach ($replacement in $replacementsProps) {
             $totalTests++
-            $expected = $replacement.Value
+            $original = if ($replacement -is [System.Management.Automation.PSPropertyInfo]) {
+                $replacement.Name
+            } else {
+                $replacement.Key
+            }
+            $expected = if ($replacement -is [System.Management.Automation.PSPropertyInfo]) {
+                $replacement.Value
+            } else {
+                $replacement.Value
+            }
 
             # 检查文件中是否包含翻译后的文本
             if ($content -like "*$expected*") {
@@ -881,7 +1528,7 @@ function Test-I18NPatches {
             } else {
                 $patchPassed = $false
                 $patchFailed += @{
-                    Original = $replacement.Name
+                    Original = $original
                     Expected = $expected
                 }
             }
@@ -921,7 +1568,7 @@ function Test-I18NPatches {
         Write-ColorOutput Yellow "可能原因:"
         Write-Output "  1. 原文已被更新，请检查源文件"
         Write-Output "  2. 配置文件中的匹配模式需要调整"
-        Write-Output "  3. 运行 [12] 查看详细调试信息"
+        Write-Output "  3. 运行 [3] 调试工具 查看详情"
     }
 
     Write-Output ""
@@ -952,9 +1599,20 @@ function Debug-I18NFailure {
     Write-ColorOutput Cyan "选择要调试的模块:"
     Write-Output ""
 
-    $patches = @($config.patches.PSObject.Properties.Name)
+    # 获取所有模块键名（兼容 hashtable 和 PSObject）
+    $patches = @()
+    if ($config.patches -is [hashtable]) {
+        $patches = @($config.patches.Keys)
+    } else {
+        $patches = @($config.patches.PSObject.Properties.Name)
+    }
+
     for ($i = 0; $i -lt $patches.Count; $i++) {
-        $patch = $config.patches.($patches[$i])
+        $patch = if ($config.patches -is [hashtable]) {
+            $config.patches[$patches[$i]]
+        } else {
+            $config.patches.($patches[$i])
+        }
         Write-Output "  [$($i+1)] $($patches[$i]) - $($patch.description)"
     }
     Write-Output "  [0] 返回"
@@ -973,7 +1631,11 @@ function Debug-I18NFailure {
     }
 
     $patchKey = $patches[$index]
-    $patch = $config.patches.$patchKey
+    $patch = if ($config.patches -is [hashtable]) {
+        $config.patches[$patchKey]
+    } else {
+        $config.patches.$patchKey
+    }
     $targetFile = "$PACKAGE_DIR\$($patch.file)"
 
     if (!(Test-Path $targetFile)) {
@@ -991,9 +1653,29 @@ function Debug-I18NFailure {
 
     $content = Get-Content $targetFile -Raw -Encoding UTF8
 
-    foreach ($replacement in $patch.replacements.PSObject.Properties) {
-        $original = $replacement.Name
-        $expected = $replacement.Value
+    # 获取 replacements（兼容不同格式）
+    $replacements = $patch.replacements
+    if ($replacements -is [System.Management.Automation.PSCustomObject]) {
+        $replacementsProps = $replacements.PSObject.Properties
+    } elseif ($replacements -is [hashtable]) {
+        $replacementsProps = $replacements.GetEnumerator()
+    } else {
+        Write-ColorOutput Red "无法读取替换配置"
+        Read-Host "按回车键继续"
+        return
+    }
+
+    foreach ($replacement in $replacementsProps) {
+        $original = if ($replacement -is [System.Management.Automation.PSPropertyInfo]) {
+            $replacement.Name
+        } else {
+            $replacement.Key
+        }
+        $expected = if ($replacement -is [System.Management.Automation.PSPropertyInfo]) {
+            $replacement.Value
+        } else {
+            $replacement.Value
+        }
 
         $hasOriginal = $content -like "*$original*"
         $hasExpected = $content -like "*$expected*"
@@ -1013,7 +1695,7 @@ function Debug-I18NFailure {
     Write-ColorOutput Yellow "调试建议:"
     Write-Output "  1. 如果'原文不存在'，需要更新配置中的匹配模式"
     Write-Output "  2. 运行 [0] 退出后用编辑器打开源文件查看实际内容"
-    Write-Output "  3. 配置文件路径: $I18N_CONFIG"
+    Write-Output "  3. 配置文件路径: $I18N_DIR"
     Write-Output ""
 
     $openFile = Read-Host "是否打开源文件查看？(Y/n)"
@@ -1119,9 +1801,9 @@ function Build-Project {
     Write-Output ""
 
     Write-ColorOutput Yellow "开始编译..."
-    Push-Location $PACKAGE_DIR
+    Push-Location $SRC_DIR
 
-    $buildOutput = & bun run script/build.ts --single 2>&1
+    $buildOutput = & bun run --cwd packages/opencode script/build.ts --single 2>&1
     $buildSuccess = $LASTEXITCODE -eq 0
 
     Pop-Location
@@ -1147,8 +1829,8 @@ function Build-Project {
             Pop-Location
 
             Write-ColorOutput Cyan "  → 重试编译..."
-            Push-Location $PACKAGE_DIR
-            & bun run script/build.ts --single 2>&1 | Out-Host
+            Push-Location $SRC_DIR
+            & bun run --cwd packages/opencode script/build.ts --single 2>&1 | Out-Host
             $buildSuccess = $LASTEXITCODE -eq 0
             Pop-Location
 
@@ -1171,8 +1853,8 @@ function Build-Project {
                 Write-Output ""
 
                 Write-ColorOutput Yellow "正在重试编译..."
-                Push-Location $PACKAGE_DIR
-                & bun run script/build.ts --single 2>&1 | Out-Host
+                Push-Location $SRC_DIR
+                & bun run --cwd packages/opencode script/build.ts --single 2>&1 | Out-Host
                 $buildSuccess = $LASTEXITCODE -eq 0
                 Pop-Location
 
@@ -1610,8 +2292,21 @@ function Restore-OriginalFiles {
     $config = Get-I18NConfig
     $filesToRestore = @()
 
-    foreach ($patchKey in $config.patches.PSObject.Properties.Name) {
-        $patch = $config.patches.$patchKey
+    # 兼容 hashtable 和 PSObject
+    $patchKeys = @()
+    if ($config.patches -is [hashtable]) {
+        $patchKeys = @($config.patches.Keys)
+    } else {
+        $patchKeys = @($config.patches.PSObject.Properties.Name)
+    }
+
+    foreach ($patchKey in $patchKeys) {
+        $patch = if ($config.patches -is [hashtable]) {
+            $config.patches[$patchKey]
+        } else {
+            $config.patches.$patchKey
+        }
+        if (!$patch.file) { continue }
         $relPath = $patch.file
         $fullPath = "$SRC_DIR\$relPath"
         $bakPath = "$fullPath.bak"
@@ -1661,8 +2356,21 @@ function Show-CleanMenu {
     $bakCount = 0
     $config = Get-I18NConfig
     if ($config) {
-        foreach ($patchKey in $config.patches.PSObject.Properties.Name) {
-            $patch = $config.patches.$patchKey
+        # 兼容 hashtable 和 PSObject
+        $patchKeys = @()
+        if ($config.patches -is [hashtable]) {
+            $patchKeys = @($config.patches.Keys)
+        } else {
+            $patchKeys = @($config.patches.PSObject.Properties.Name)
+        }
+
+        foreach ($patchKey in $patchKeys) {
+            $patch = if ($config.patches -is [hashtable]) {
+                $config.patches[$patchKey]
+            } else {
+                $config.patches.$patchKey
+            }
+            if (!$patch.file) { continue }
             $fullPath = "$SRC_DIR\$($patch.file)"
             $bakPath = "$fullPath.bak"
             if (Test-Path $bakPath) { $bakCount++ }
@@ -1714,8 +2422,21 @@ function Invoke-Clean {
             $config = Get-I18NConfig
             $count = 0
             if ($config) {
-                foreach ($patchKey in $config.patches.PSObject.Properties.Name) {
-                    $patch = $config.patches.$patchKey
+                # 兼容 hashtable 和 PSObject
+                $patchKeys = @()
+                if ($config.patches -is [hashtable]) {
+                    $patchKeys = @($config.patches.Keys)
+                } else {
+                    $patchKeys = @($config.patches.PSObject.Properties.Name)
+                }
+
+                foreach ($patchKey in $patchKeys) {
+                    $patch = if ($config.patches -is [hashtable]) {
+                        $config.patches[$patchKey]
+                    } else {
+                        $config.patches.$patchKey
+                    }
+                    if (!$patch.file) { continue }
                     $fullPath = "$SRC_DIR\$($patch.file)"
                     $bakPath = "$fullPath.bak"
                     if (Test-Path $bakPath) {
@@ -1784,8 +2505,21 @@ function Invoke-Clean {
                 Write-ColorOutput Yellow "清理 .bak 文件..."
                 $config = Get-I18NConfig
                 if ($config) {
-                    foreach ($patchKey in $config.patches.PSObject.Properties.Name) {
-                        $patch = $config.patches.$patchKey
+                    # 兼容 hashtable 和 PSObject
+                    $patchKeys = @()
+                    if ($config.patches -is [hashtable]) {
+                        $patchKeys = @($config.patches.Keys)
+                    } else {
+                        $patchKeys = @($config.patches.PSObject.Properties.Name)
+                    }
+
+                    foreach ($patchKey in $patchKeys) {
+                        $patch = if ($config.patches -is [hashtable]) {
+                            $config.patches[$patchKey]
+                        } else {
+                            $config.patches.$patchKey
+                        }
+                        if (!$patch.file) { continue }
                         $bakPath = "$SRC_DIR\$($patch.file).bak"
                         if (Test-Path $bakPath) { Remove-Item $bakPath -Force }
                     }
@@ -2063,7 +2797,12 @@ function Show-I18NConfig {
         return
     }
 
-    Write-ColorOutput Cyan "配置文件: $I18N_CONFIG"
+    # 确定配置类型
+    $configType = if ($config.patches -is [hashtable]) { "模块化" } else { "单文件" }
+    $configPath = if ($config.patches -is [hashtable]) { $I18N_DIR } else { $I18N_CONFIG_OLD }
+
+    Write-ColorOutput Cyan "配置类型: $configType"
+    Write-ColorOutput Cyan "配置路径: $configPath"
     Write-ColorOutput Cyan "版本: $($config.version)"
     Write-ColorOutput Cyan "描述: $($config.description)"
     Write-ColorOutput Cyan "最后更新: $($config.lastUpdate)"
@@ -2073,24 +2812,49 @@ function Show-I18NConfig {
     $patchIndex = 1
     $totalReplacements = 0
 
-    $config.patches.PSObject.Properties | ForEach-Object {
-        $patchName = $_.Name
-        $patch = $_.Value
-        $replacementsCount = ($patch.replacements.PSObject.Properties | Measure-Object).Count
-        $totalReplacements += $replacementsCount
+    # 兼容 hashtable 和 PSObject
+    if ($config.patches -is [hashtable]) {
+        foreach ($kvp in $config.patches.GetEnumerator()) {
+            $patchName = $kvp.Key
+            $patch = $kvp.Value
+            $replacementsCount = 0
+            if ($patch.replacements) {
+                if ($patch.replacements -is [System.Management.Automation.PSCustomObject]) {
+                    $replacementsCount = ($patch.replacements.PSObject.Properties | Measure-Object).Count
+                } elseif ($patch.replacements -is [hashtable]) {
+                    $replacementsCount = $patch.replacements.Count
+                }
+            }
+            $totalReplacements += $replacementsCount
 
-        Write-Output "  [$patchIndex] $patchName"
-        Write-Output "      文件: $($patch.file)"
-        Write-Output "      描述: $($patch.description)"
-        Write-Output "      替换数: $replacementsCount 项"
-        Write-Output ""
-        $patchIndex++
+            Write-Output "  [$patchIndex] $patchName"
+            Write-Output "      文件: $($patch.file)"
+            Write-Output "      描述: $($patch.description)"
+            Write-Output "      替换数: $replacementsCount 项"
+            Write-Output ""
+            $patchIndex++
+        }
+    } else {
+        $config.patches.PSObject.Properties | ForEach-Object {
+            $patchName = $_.Name
+            $patch = $_.Value
+            $replacementsCount = ($patch.replacements.PSObject.Properties | Measure-Object).Count
+            $totalReplacements += $replacementsCount
+
+            Write-Output "  [$patchIndex] $patchName"
+            Write-Output "      文件: $($patch.file)"
+            Write-Output "      描述: $($patch.description)"
+            Write-Output "      替换数: $replacementsCount 项"
+            Write-Output ""
+            $patchIndex++
+        }
     }
 
-    Write-ColorOutput Green "总计: $($config.patches.PSObject.Properties.Count) 个模块, $totalReplacements 项替换"
+    $moduleCount = if ($config.patches -is [hashtable]) { $config.patches.Count } else { $config.patches.PSObject.Properties.Count }
+    Write-ColorOutput Green "总计: $moduleCount 个模块, $totalReplacements 项替换"
     Write-Output ""
     Write-ColorOutput Yellow "编辑配置文件即可添加/修改汉化内容"
-    Write-ColorOutput Cyan "配置路径: $I18N_CONFIG"
+    Write-ColorOutput Cyan "配置路径: $configPath"
     Write-Output ""
     Read-Host "按回车键继续"
 }
@@ -2165,8 +2929,8 @@ $SCRIPT_DIR\
 
 ## 编译命令
 ```bash
-cd $PACKAGE_DIR
-bun run script/build.ts --single
+cd $SRC_DIR
+bun run --cwd packages/opencode script/build.ts --single
 ```
 
 ## 当前状态
@@ -2178,7 +2942,8 @@ bun run script/build.ts --single
         $info += "`n### 汉化配置`n"
         $info += "- 版本: $($config.version)`n"
         $info += "- 最后更新: $($config.lastUpdate)`n"
-        $info += "- 模块数: $($config.patches.PSObject.Properties.Count)`n"
+        $moduleCount = if ($config.patches -is [hashtable]) { $config.patches.Count } else { $config.patches.PSObject.Properties.Count }
+        $info += "- 模块数: $moduleCount`n"
     }
 
     $info += "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`n"
@@ -2276,6 +3041,8 @@ do {
         "3" { Debug-I18NFailure }
         "4" { Show-VersionInfo }
         "5" { Backup-All }
+        "L" { Show-Changelog }
+        "l" { Show-Changelog }
         "6" {
             # 高级菜单
             do {
@@ -2289,6 +3056,8 @@ do {
                     "4" { Show-VersionInfo }
                     "5" { Backup-All }
                     "6" { Restore-Backup }
+                    "H" { Show-Changelog }
+                    "h" { Show-Changelog }
                     "7" { Restore-OriginalFiles }
                     "8" { Open-OutputDirectory }
                     "9" { Install-Global }

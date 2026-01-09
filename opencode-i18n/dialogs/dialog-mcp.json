@@ -3,9 +3,9 @@
   "description": "MCP服务器对话框",
   "replacements": {
     "title=\"MCPs\"": "title=\"MCP服务器\"",
-    "Loading": "加载中",
-    "Enabled": "已启用",
-    "Disabled": "已禁用",
+    " Loading</span>": " 加载中</span>",
+    ">Enabled</": ">已启用</",
+    ">Disabled</": ">已禁用</",
     "toggle": "切换",
     "Failed to refresh MCP status: no data returned": "刷新 MCP 状态失败：未返回数据",
     "Failed to toggle MCP:": "切换 MCP 失败："
