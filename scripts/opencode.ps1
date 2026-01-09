@@ -213,83 +213,253 @@ function Write-StepMessage {
 
 function Write-Header {
     Clear-Host
-    Write-ColorOutput Cyan "╔════════════════════════════════════╗"
-    Write-ColorOutput Cyan "║  OpenCode 中文汉化管理工具 v3.2    ║"
-    Write-ColorOutput Cyan "╚════════════════════════════════════╝"
-    Write-Output ""
+
+    # 获取系统信息
+    $bunVersion = Get-BunVersion
+    $bunDisplay = if ($bunVersion) { "Bun $bunVersion" } else { "Bun 未安装" }
+
+    # 顶部标题栏
+    Write-Host ""
+    Write-Host "┌──────────────────────────────────────────────────────────────────────────────┐" -ForegroundColor Cyan
+    Write-Host "│" -ForegroundColor Cyan -NoNewline
+    Write-Host "  OpenCode 中文汉化管理工具 " -ForegroundColor White -NoNewline
+    Write-Host "v" -ForegroundColor DarkGray -NoNewline
+    Write-Host "3.2" -ForegroundColor Green -NoNewline
+    Write-Host "                                                " -NoNewline
+    Write-Host "│" -ForegroundColor Cyan
+    Write-Host "│" -ForegroundColor Cyan -NoNewline
+    Write-Host "  ────────────────────────────────────────────────────────────────────────────" -ForegroundColor DarkGray -NoNewline
+    Write-Host "  │" -ForegroundColor Cyan
+    Write-Host "└──────────────────────────────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+    Write-Host ""
 }
 
-function Show-Menu {
-    Write-Header
-
-    # 版本状态
+function Show-SystemStatus {
+    <#
+    .SYNOPSIS
+        显示系统状态栏
+    #>
     $versionInfo = Get-VersionInfo
+
+    # 构建状态栏
+    $statusItems = @()
+
+    # Git 状态
     if ($versionInfo.HasGit) {
         if ($versionInfo.NeedsUpdate) {
-            $remoteMsg = if ($versionInfo.RemoteCommitMessage.Length -gt 20) { $versionInfo.RemoteCommitMessage.Substring(0, 17) + "..." } else { $versionInfo.RemoteCommitMessage }
-            Write-ColorOutput Yellow "  版本: $($versionInfo.LocalCommit) → $($versionInfo.RemoteCommit) ($remoteMsg)"
+            $statusItems += @{ Icon = "↓"; Text = "有更新"; Color = "Yellow" }
         } else {
-            $localMsg = if ($versionInfo.LocalCommitMessage.Length -gt 25) { $versionInfo.LocalCommitMessage.Substring(0, 22) + "..." } else { $versionInfo.LocalCommitMessage }
-            Write-ColorOutput Green "  版本: $($versionInfo.LocalCommit) ($localMsg)"
+            $statusItems += @{ Icon = "✓"; Text = "最新版"; Color = "Green" }
         }
+    } else {
+        $statusItems += @{ Icon = "!"; Text = "无Git"; Color = "Red" }
     }
 
-    # 编译时间
+    # Bun 状态
+    $bunVersion = Get-BunVersion
+    if ($bunVersion) {
+        $statusItems += @{ Icon = "●"; Text = "Bun $bunVersion"; Color = "Green" }
+    } else {
+        $statusItems += @{ Icon = "○"; Text = "Bun 未安装"; Color = "Red" }
+    }
+
+    # 编译状态
     if (Test-Path "$OUT_DIR\opencode.exe") {
         $exeTime = (Get-Item "$OUT_DIR\opencode.exe").LastWriteTime
         $timeDiff = (Get-Date) - $exeTime
         if ($timeDiff.TotalHours -lt 1) {
-            Write-ColorOutput Cyan "  编译: 刚刚"
+            $statusItems += @{ Icon = "★"; Text = "已编译"; Color = "Cyan" }
         } else {
-            Write-ColorOutput Cyan "  编译: $($exeTime.ToString('MM-dd HH:mm'))"
+            $statusItems += @{ Icon = "▷"; Text = "已编译"; Color = "DarkGray" }
         }
+    } else {
+        $statusItems += @{ Icon = "○"; Text = "未编译"; Color = "DarkGray" }
     }
 
-    Write-Output ""
+    # 汉化状态
+    $config = Get-Content $I18N_CONFIG -ErrorAction SilentlyContinue | ConvertFrom-Json
+    if ($config) {
+        $statusItems += @{ Icon = "文"; Text = "汉化 v$($config.version)"; Color = "Magenta" }
+    }
 
-    Write-ColorOutput Green "  [1]  一键汉化+部署"
-    Write-ColorOutput DarkGray "      → 自动拉取代码 → 应用汉化 → 编译 → 部署"
-    Write-Output ""
-    Write-ColorOutput Cyan "  [2]  应用汉化      [3]  验证汉化"
-    Write-ColorOutput DarkGray "      应用翻译补丁          检查汉化效果"
-    Write-Output ""
-    Write-ColorOutput Yellow "  [4]  调试工具      [5]  版本检测      [6]  备份版本"
-    Write-ColorOutput DarkGray "      诊断问题          检查更新状态          保存当前版本"
-    Write-Output ""
-    Write-ColorOutput DarkGray "               [L]  更新日志"
-    Write-Output ""
-    Write-ColorOutput DarkGray "  [7]  高级菜单"
-    Write-ColorOutput DarkGray "      → 更多专业功能（拉取/编译/恢复/清理等）"
-    Write-Output ""
-    Write-ColorOutput Red "  [0]  退出"
-    Write-Output ""
+    # 绘制状态栏
+    Write-Host "   系统状态: " -NoNewline
+    foreach ($item in $statusItems) {
+        Write-Host "[" -ForegroundColor DarkGray -NoNewline
+        Write-Host $item.Icon -ForegroundColor $item.Color -NoNewline
+        Write-Host " " -NoNewline
+        Write-Host $item.Text -ForegroundColor $item.Color -NoNewline
+        Write-Host "] " -ForegroundColor DarkGray -NoNewline
+    }
+    Write-Host ""
+}
+
+function Show-Menu {
+    Write-Header
+    Show-SystemStatus
+
+    Write-Host ""
+
+    # 核心功能区
+    Write-Host "   ┌─── 核心功能 ─────────────────────────────────────────┐" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "   [1]" -ForegroundColor Green -NoNewline
+    Write-Host " 一键汉化+部署    " -ForegroundColor White -NoNewline
+    Write-Host "→ 拉取 → 汉化 → 编译 → 部署" -ForegroundColor DarkGray -NoNewline
+    Write-Host "                    │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "   [2]" -ForegroundColor Green -NoNewline
+    Write-Host " 应用汉化        " -ForegroundColor White -NoNewline
+    Write-Host "   " -NoNewline
+    Write-Host "[3]" -ForegroundColor Green -NoNewline
+    Write-Host " 验证汉化        " -ForegroundColor White -NoNewline
+    Write-Host "   " -NoNewline
+    Write-Host "[4]" -ForegroundColor Green -NoNewline
+    Write-Host " 调试工具" -ForegroundColor White -NoNewline
+    Write-Host "         │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "      " -NoNewline
+    Write-Host "仅翻译" -ForegroundColor DarkGray -NoNewline
+    Write-Host "              " -NoNewline
+    Write-Host "检查覆盖率" -ForegroundColor DarkGray -NoNewline
+    Write-Host "              " -NoNewline
+    Write-Host "诊断问题" -ForegroundColor DarkGray -NoNewline
+    Write-Host "           │" -ForegroundColor Cyan
+    Write-Host "   └───────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+    Write-Host ""
+
+    # 版本管理区
+    Write-Host "   ┌─── 版本管理 ─────────────────────────────────────────┐" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "   [5]" -ForegroundColor Yellow -NoNewline
+    Write-Host " 版本检测    " -ForegroundColor White -NoNewline
+    Write-Host "   " -NoNewline
+    Write-Host "[6]" -ForegroundColor Yellow -NoNewline
+    Write-Host " 备份版本    " -ForegroundColor White -NoNewline
+    Write-Host "   " -NoNewline
+    Write-Host "[L]" -ForegroundColor Yellow -NoNewline
+    Write-Host " 更新日志" -ForegroundColor White -NoNewline
+    Write-Host "           │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "      " -NoNewline
+    Write-Host "检查更新状态" -ForegroundColor DarkGray -NoNewline
+    Write-Host "            " -NoNewline
+    Write-Host "保存当前版本" -ForegroundColor DarkGray -NoNewline
+    Write-Host "            " -NoNewline
+    Write-Host "查看提交记录" -ForegroundColor DarkGray -NoNewline
+    Write-Host "        │" -ForegroundColor Cyan
+    Write-Host "   └───────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+    Write-Host ""
+
+    # 高级功能区
+    Write-Host "   ┌─── 高级功能 ─────────────────────────────────────────┐" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "   [7]" -ForegroundColor Magenta -NoNewline
+    Write-Host " 高级菜单    " -ForegroundColor White -NoNewline
+    Write-Host "→ 拉取/编译/恢复/清理/启动等专业功能" -ForegroundColor DarkGray -NoNewline
+    Write-Host "│" -ForegroundColor Cyan
+    Write-Host "   └───────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+    Write-Host ""
+
+    # 退出选项
+    Write-Host "   [" -ForegroundColor DarkGray -NoNewline
+    Write-Host "0" -ForegroundColor Red -NoNewline
+    Write-Host "]" -ForegroundColor DarkGray -NoNewline
+    Write-Host " 退出工具" -ForegroundColor DarkGray
+    Write-Host ""
 }
 
 function Show-AdvancedMenu {
     Write-Header
-    Write-ColorOutput Cyan "  高级菜单"
-    Write-Output ""
+    Show-SystemStatus
 
-    Write-ColorOutput Green "  [1] 拉取代码    [2] 应用汉化    [3] 编译程序"
-    Write-ColorOutput DarkGray "      获取最新      只汉化不拉取   只编译不汉化"
-    Write-Output ""
-    Write-ColorOutput Cyan "  [4] 验证汉化    [5] 版本检测    [6] 备份版本"
-    Write-ColorOutput DarkGray "      检查汉化效果    检查Git状态   保存备份"
-    Write-Output ""
-    Write-ColorOutput Yellow "  [7] 恢复备份    [8] 还原文件    [9] 打开目录"
-    Write-ColorOutput DarkGray "      选择性恢复      撤销汉化      文件管理"
-    Write-Output ""
-    Write-ColorOutput DarkGray "  [A] 替换全局    [R] 源码恢复    [H] 更新日志"
-    Write-ColorOutput DarkGray "      更新opencode命令  强制重置      查看提交记录"
-    Write-Output ""
-    Write-ColorOutput Magenta "  [C] 清理工具    [L] 启动 OpenCode"
-    Write-ColorOutput DarkGray "      清理缓存/临时文件          运行汉化版"
-    Write-Output ""
-    Write-ColorOutput DarkGray "  [S] 恢复脚本"
-    Write-ColorOutput DarkGray "      → 从自动备份恢复管理脚本本身"
-    Write-Output ""
-    Write-ColorOutput DarkGray "  [0] 返回主菜单"
-    Write-Output ""
+    Write-Host ""
+    Write-Host "   ┌─── 代码管理 ─────────────────────────────────────────┐" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "   [1]" -ForegroundColor Green -NoNewline
+    Write-Host " 拉取代码      " -ForegroundColor White -NoNewline
+    Write-Host "[2]" -ForegroundColor Green -NoNewline
+    Write-Host " 应用汉化      " -ForegroundColor White -NoNewline
+    Write-Host "[3]" -ForegroundColor Green -NoNewline
+    Write-Host " 编译程序" -ForegroundColor White -NoNewline
+    Write-Host "         │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "      获取最新      只汉化不拉取   只编译不汉化       │" -ForegroundColor DarkGray -NoNewline
+    Write-Host ""
+    Write-Host "   │" -ForegroundColor Cyan
+    Write-Host "   └───────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+    Write-Host ""
+
+    Write-Host "   ┌─── 汉化管理 ─────────────────────────────────────────┐" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "   [4]" -ForegroundColor Yellow -NoNewline
+    Write-Host " 验证汉化      " -ForegroundColor White -NoNewline
+    Write-Host "[7]" -ForegroundColor Yellow -NoNewline
+    Write-Host " 恢复备份      " -ForegroundColor White -NoNewline
+    Write-Host "[8]" -ForegroundColor Yellow -NoNewline
+    Write-Host " 还原文件" -ForegroundColor White -NoNewline
+    Write-Host "         │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "      检查覆盖率      选择性恢复      撤销汉化       │" -ForegroundColor DarkGray -NoNewline
+    Write-Host ""
+    Write-Host "   │" -ForegroundColor Cyan
+    Write-Host "   └───────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+    Write-Host ""
+
+    Write-Host "   ┌─── 系统工具 ─────────────────────────────────────────┐" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "   [5]" -ForegroundColor Magenta -NoNewline
+    Write-Host " 版本检测      " -ForegroundColor White -NoNewline
+    Write-Host "[6]" -ForegroundColor Magenta -NoNewline
+    Write-Host " 备份版本      " -ForegroundColor White -NoNewline
+    Write-Host "[9]" -ForegroundColor Magenta -NoNewline
+    Write-Host " 打开目录" -ForegroundColor White -NoNewline
+    Write-Host "         │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "      检查更新      保存当前版本      文件管理       │" -ForegroundColor DarkGray -NoNewline
+    Write-Host ""
+    Write-Host "   │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "   [A]" -ForegroundColor Magenta -NoNewline
+    Write-Host " 替换全局      " -ForegroundColor White -NoNewline
+    Write-Host "[R]" -ForegroundColor Magenta -NoNewline
+    Write-Host " 源码恢复      " -ForegroundColor White -NoNewline
+    Write-Host "[C]" -ForegroundColor Magenta -NoNewline
+    Write-Host " 清理工具" -ForegroundColor White -NoNewline
+    Write-Host "         │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "      更新命令      强制重置      清理缓存       │" -ForegroundColor DarkGray -NoNewline
+    Write-Host ""
+    Write-Host "   │" -ForegroundColor Cyan
+    Write-Host "   └───────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+    Write-Host ""
+
+    Write-Host "   ┌─── 其他 ─────────────────────────────────────────────┐" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "   [L]" -ForegroundColor DarkGray -NoNewline
+    Write-Host " 更新日志      " -ForegroundColor White -NoNewline
+    Write-Host "[S]" -ForegroundColor DarkGray -NoNewline
+    Write-Host " 恢复脚本      " -ForegroundColor White -NoNewline
+    Write-Host "[H]" -ForegroundColor DarkGray -NoNewline
+    Write-Host " 启动 OpenCode" -ForegroundColor White -NoNewline
+    Write-Host "    │" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "      查看提交记录      恢复脚本本身      运行汉化版       │" -ForegroundColor DarkGray -NoNewline
+    Write-Host ""
+    Write-Host "   │" -ForegroundColor Cyan
+    Write-Host "   └───────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+    Write-Host ""
+
+    Write-Host "   [" -ForegroundColor DarkGray -NoNewline
+    Write-Host "0" -ForegroundColor Red -NoNewline
+    Write-Host "]" -ForegroundColor DarkGray -NoNewline
+    Write-Host " 返回主菜单" -ForegroundColor DarkGray
+    Write-Host ""
 }
 
 # ==================== 辅助函数 ====================
@@ -313,7 +483,7 @@ function Get-BunVersion {
 }
 
 function Show-Separator {
-    Write-ColorOutput Cyan "────────────────────────────────────────────────────────────"
+    Write-Host "────────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
 }
 
 function Get-I18NConfig {
@@ -583,11 +753,24 @@ function Show-VersionInfo {
             $beforePull = git ls-files -v | Where-Object { $_ -match "^h" }
             if ($beforePull) {
                 $markedFiles = @($beforePull)
-                Write-Host "   → 解除 $($markedFiles.Count) 个文件的忽略标记" -ForegroundColor DarkGray
+                $markedCount = $markedFiles.Count
+                Write-Host "   → 解除 $markedCount 个文件的忽略标记" -ForegroundColor DarkGray
+
+                # 添加进度指示
+                $currentIndex = 0
+                $progressInterval = if ($markedCount -gt 100) { [math]::Floor($markedCount / 20) } else { 10 }
+
                 foreach ($file in $markedFiles) {
+                    $currentIndex++
+                    # 每处理一定数量文件显示一次进度
+                    if ($currentIndex % $progressInterval -eq 0 -or $currentIndex -eq $markedCount) {
+                        $percent = [math]::Floor(($currentIndex / $markedCount) * 100)
+                        Write-Host "`r   → 进度: $percent% ($currentIndex/$markedCount)" -NoNewline
+                    }
                     $filePath = $file.Substring(2)
                     git update-index --no-assume-unchanged $filePath 2>&1 | Out-Null
                 }
+                Write-Host ""  # 换行
             } else {
                 Write-Host "   → 无需解除" -ForegroundColor DarkGray
             }
@@ -1772,16 +1955,16 @@ function Test-I18NPatches {
     #>
     Write-Header
     Show-Separator
-    Write-Output "   验证汉化补丁"
+    Write-Host "   验证汉化补丁"
     Show-Separator
-    Write-Output ""
+    Write-Host ""
 
     $config = Get-I18NConfig
     if (!$config) {
-        Write-ColorOutput Red "[错误] 无法加载汉化配置"
-        Write-Output "配置路径: $I18N_CONFIG"
+        Write-StepMessage "无法加载汉化配置" "ERROR"
+        Write-Host "   配置路径: $I18N_CONFIG" -ForegroundColor DarkGray
         if (!(Test-Path $I18N_CONFIG)) {
-            Write-ColorOutput Red "配置文件不存在: $I18N_CONFIG"
+            Write-Host "   配置文件不存在" -ForegroundColor Red
         }
         Read-Host "按回车键继续"
         return
@@ -1791,8 +1974,8 @@ function Test-I18NPatches {
     $passedTests = 0
     $failedItems = @()
 
-    Write-ColorOutput Cyan "正在验证汉化结果..."
-    Write-Output ""
+    Write-StepMessage "开始验证汉化结果..." "INFO"
+    Write-Host ""
 
     # 获取所有模块键名（兼容 hashtable 和 PSObject）
     $patchKeys = @()
@@ -1802,7 +1985,15 @@ function Test-I18NPatches {
         $patchKeys = @($config.patches.PSObject.Properties.Name)
     }
 
+    $currentIndex = 0
+    $totalKeys = $patchKeys.Count
+
     foreach ($patchKey in $patchKeys) {
+        $currentIndex++
+        # 显示进度
+        $percent = [math]::Floor(($currentIndex / $totalKeys) * 100)
+        Write-Host "`r   验证进度: [$percent%] $currentIndex/$totalKeys - $patchKey" -NoNewline
+
         $patch = $null
         # 兼容 hashtable 和 PSObject
         if ($config.patches -is [hashtable]) {
@@ -1816,7 +2007,8 @@ function Test-I18NPatches {
         $targetFile = "$PACKAGE_DIR\$($patch.file)"
 
         if (!(Test-Path $targetFile)) {
-            Write-ColorOutput Red "   [$patchKey] 文件不存在: $($patch.file)"
+            Write-Host ""
+            Write-Host "   [$patchKey] ✗ 文件不存在: $($patch.file)" -ForegroundColor Red
             continue
         }
 
@@ -1860,9 +2052,9 @@ function Test-I18NPatches {
         }
 
         if ($patchPassed) {
-            Write-ColorOutput Green "   [$patchKey] ✓ 通过"
+            Write-Host "`r   [$patchKey] ✓" -ForegroundColor Green
         } else {
-            Write-ColorOutput Red "   [$patchKey] ✗ 失败 ($($patchFailed.Count) 项未生效)"
+            Write-Host "`r   [$patchKey] ✗ ($($patchFailed.Count) 项失败)" -ForegroundColor Red
             $failedItems += @{
                 Module = $patchKey
                 File = $patch.file
@@ -1871,32 +2063,61 @@ function Test-I18NPatches {
         }
     }
 
-    Write-Output ""
-    Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    Write-Host ""
+
+    # 显示结果统计
+    $passRate = if ($totalTests -gt 0) { [math]::Round(($passedTests / $totalTests) * 100, 1) } else { 0 }
+
+    Write-Host "   ┌─────────────────────────────────────────────────────────┐" -ForegroundColor DarkGray
+    Write-Host "   │" -ForegroundColor DarkGray -NoNewline
+    Write-Host " 验证结果统计" -ForegroundColor White -NoNewline
+    Write-Host "                                             │" -ForegroundColor DarkGray
+    Write-Host "   ├─────────────────────────────────────────────────────────┤" -ForegroundColor DarkGray
+    Write-Host "   │" -ForegroundColor DarkGray -NoNewline
+    Write-Host " 总测试数: " -ForegroundColor White -NoNewline
+    Write-Host "$totalTests" -ForegroundColor Cyan -NoNewline
+    Write-Host "                                              │" -ForegroundColor DarkGray
+    Write-Host "   │" -ForegroundColor DarkGray -NoNewline
+    Write-Host " 通过数: " -ForegroundColor White -NoNewline
+    Write-Host "$passedTests" -ForegroundColor Green -NoNewline
+    Write-Host "                                                │" -ForegroundColor DarkGray
+    Write-Host "   │" -ForegroundColor DarkGray -NoNewline
+    Write-Host " 通过率: " -ForegroundColor White -NoNewline
+    if ($passRate -eq 100) {
+        Write-Host "$passRate%" -ForegroundColor Green -NoNewline
+    } elseif ($passRate -ge 80) {
+        Write-Host "$passRate%" -ForegroundColor Yellow -NoNewline
+    } else {
+        Write-Host "$passRate%" -ForegroundColor Red -NoNewline
+    }
+    Write-Host "                                               │" -ForegroundColor DarkGray
+    Write-Host "   └─────────────────────────────────────────────────────────┘" -ForegroundColor DarkGray
+    Write-Host ""
 
     if ($failedItems.Count -eq 0) {
-        Write-ColorOutput Green "✓ 所有汉化验证通过！($passedTests/$totalTests)"
+        Write-StepMessage "所有汉化验证通过！" "SUCCESS"
     } else {
-        Write-ColorOutput Red "✗ 汉化验证失败！($passedTests/$totalTests 通过)"
-        Write-Output ""
-        Write-ColorOutput Yellow "失败的模块:"
+        Write-StepMessage "汉化验证发现问题" "WARNING"
+        Write-Host ""
+        Write-Host "   失败的模块:" -ForegroundColor Yellow
         foreach ($item in $failedItems) {
-            Write-Output "  [$($item.Module)] $($item.File)"
-            Write-ColorOutput Yellow "    失败项 (前3个):"
+            Write-Host ""
+            Write-Host "     [$($item.Module)] $($item.File)" -ForegroundColor Red
+            Write-Host "       失败项 (前3个):" -ForegroundColor DarkGray
             for ($i = 0; $i -lt [Math]::Min(3, $item.Failures.Count); $i++) {
                 $f = $item.Failures[$i]
-                Write-Output "      原文: $($f.Original)"
-                Write-Output "      期望: $($f.Expected)"
+                $preview = if ($f.Expected.Length -gt 50) { $f.Expected.Substring(0, 47) + "..." } else { $f.Expected }
+                Write-Host "         ✗ $preview" -ForegroundColor DarkGray
             }
         }
-        Write-Output ""
-        Write-ColorOutput Yellow "可能原因:"
-        Write-Output "  1. 原文已被更新，请检查源文件"
-        Write-Output "  2. 配置文件中的匹配模式需要调整"
-        Write-Output "  3. 运行 [3] 调试工具 查看详情"
+        Write-Host ""
+        Write-Host "   可能原因:" -ForegroundColor Yellow
+        Write-Host "     1. 原文已被更新，请检查源文件" -ForegroundColor DarkGray
+        Write-Host "     2. 配置文件中的匹配模式需要调整" -ForegroundColor DarkGray
+        Write-Host "     3. 运行 [4] 调试工具 查看详情" -ForegroundColor DarkGray
     }
 
-    Write-Output ""
+    Write-Host ""
     Read-Host "按回车键继续"
 
     return $failedItems.Count -eq 0
@@ -2038,22 +2259,41 @@ function Debug-I18NFailure {
 function Apply-Patches {
     Write-Header
     Show-Separator
-    Write-Output "   应用汉化补丁"
+    Write-Host "   应用汉化补丁"
     Show-Separator
-    Write-Output ""
+    Write-Host ""
 
     if (!(Test-Path $PACKAGE_DIR)) {
-        Write-ColorOutput Red "[错误] 包目录不存在: $PACKAGE_DIR"
+        Write-StepMessage "包目录不存在: $PACKAGE_DIR" "ERROR"
         Read-Host "按回车键继续"
         return
     }
 
+    # 加载配置获取模块数量
+    $config = Get-Content $I18N_CONFIG -ErrorAction SilentlyContinue | ConvertFrom-Json
+    $totalModules = 0
+    if ($config) {
+        foreach ($category in $config.modules.PSObject.Properties) {
+            $totalModules += $category.Value.Count
+        }
+    }
+
+    Write-StepMessage "开始应用汉化补丁..." "INFO"
+    Write-Host "   → 配置版本: $($config.version), 模块数: $totalModules" -ForegroundColor DarkGray
+    Write-Host ""
+
+    # 应用命令面板汉化
+    Write-StepMessage "应用命令面板汉化..." "INFO"
     Apply-CommandPanelPatch
+    Write-Host ""
+
+    # 应用其他汉化
+    Write-StepMessage "应用组件和通用汉化..." "INFO"
     Apply-OtherPatches
 
-    Write-Output ""
-    Write-ColorOutput Green "汉化补丁应用完成！"
-    Write-Output ""
+    Write-Host ""
+    Write-StepMessage "汉化补丁应用完成！" "SUCCESS"
+    Write-Host ""
     Read-Host "按回车键继续"
 }
 
@@ -2371,11 +2611,24 @@ function Invoke-OneClickFull {
             $beforePull = git ls-files -v | Where-Object { $_ -match "^h" }
             if ($beforePull) {
                 $markedFiles = @($beforePull)
-                Write-Host "   → 解除 $($markedFiles.Count) 个文件的忽略标记" -ForegroundColor DarkGray
+                $markedCount = $markedFiles.Count
+                Write-Host "   → 解除 $markedCount 个文件的忽略标记" -ForegroundColor DarkGray
+
+                # 添加进度指示
+                $currentIndex = 0
+                $progressInterval = if ($markedCount -gt 100) { [math]::Floor($markedCount / 20) } else { 10 }
+
                 foreach ($file in $markedFiles) {
+                    $currentIndex++
+                    # 每处理一定数量文件显示一次进度
+                    if ($currentIndex % $progressInterval -eq 0 -or $currentIndex -eq $markedCount) {
+                        $percent = [math]::Floor(($currentIndex / $markedCount) * 100)
+                        Write-Host "`r   → 进度: $percent% ($currentIndex/$markedCount)" -NoNewline
+                    }
                     $filePath = $file.Substring(2)
                     git update-index --no-assume-unchanged $filePath 2>&1 | Out-Null
                 }
+                Write-Host ""  # 换行
             } else {
                 Write-Host "   → 无需解除" -ForegroundColor DarkGray
             }
