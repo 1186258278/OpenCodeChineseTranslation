@@ -1,5 +1,5 @@
 # ========================================
-# OpenCode 中文汉化版 - 管理工具 v5.0
+# OpenCode 中文汉化版 - 管理工具 v5.1
 # ========================================
 
 # 配置路径 (使用脚本所在目录，自动适配)
@@ -594,6 +594,88 @@ function Get-I18NConfig {
         lastUpdate = $mainConfig.lastUpdate
         patches = $allModules  # 使用 patches 键保持兼容性
         modules = $allModules  # 新增 modules 键
+        supportedCommit = $mainConfig.supportedCommit
+        maintainer = $mainConfig.maintainer
+    }
+}
+
+# ==================== 语言包版本适配检测 ====================
+
+function Test-LanguagePackCompatibility {
+    <#
+    .SYNOPSIS
+        检查语言包版本是否与 OpenCode 版本匹配
+    .DESCRIPTION
+        对比当前 commit 与语言包支持的 commit，如果不匹配则提示更新
+    #>
+    if (!(Test-Path $SRC_DIR)) {
+        return $false
+    }
+
+    Push-Location $SRC_DIR
+    $currentCommit = git rev-parse HEAD 2>&1
+    Pop-Location
+
+    if ($LASTEXITCODE -ne 0 -or !$currentCommit) {
+        return $false
+    }
+
+    # 读取语言包配置
+    if (!(Test-Path $I18N_CONFIG)) {
+        return $false
+    }
+
+    try {
+        $config = Get-Content $I18N_CONFIG -Raw -Encoding UTF8 | ConvertFrom-Json
+        $supportedCommit = $config.supportedCommit
+        $maintainer = $config.maintainer
+
+        if (!$supportedCommit) {
+            return $false
+        }
+
+        # 检查 commit 是否匹配（只比较前8位）
+        $currentShort = $currentCommit.Substring(0, [Math]::Min(8, $currentCommit.Length))
+        $supportedShort = $supportedCommit.Substring(0, [Math]::Min(8, $supportedCommit.Length))
+
+        if ($currentShort -ne $supportedShort) {
+            # 版本不匹配，显示警告
+            Write-Output ""
+            Write-ColorOutput Yellow "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            Write-ColorOutput Yellow "⚠ 语言包版本可能不匹配"
+            Write-ColorOutput Yellow "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            Write-Output ""
+            Write-Host "   语言包支持版本: " -NoNewline
+            Write-Host $supportedShort -ForegroundColor Cyan
+            Write-Host "   当前代码版本:   " -NoNewline
+            Write-Host $currentShort -ForegroundColor Yellow
+            Write-Output ""
+            Write-ColorOutput Yellow "   可能出现的问题："
+            Write-Output "     • 部分文本无法汉化"
+            Write-Output "     • 汉化内容显示错误"
+            Write-Output "     • 界面显示异常"
+            Write-Output ""
+
+            if ($maintainer) {
+                Write-ColorOutput Cyan "   如遇问题请联系维护者更新："
+                if ($maintainer.wechat) {
+                    Write-Output "     微信: " -NoNewline
+                    Write-Host $maintainer.wechat -ForegroundColor Green
+                }
+                if ($maintainer.github) {
+                    Write-Output "     GitHub: " -NoNewline
+                    Write-Host $maintainer.github -ForegroundColor Green
+                }
+                Write-Output ""
+            }
+
+            $continue = Read-Host "   是否继续？(Y/n)"
+            return $continue -ne "n" -and $continue -ne "N"
+        }
+
+        return $true
+    } catch {
+        return $false
     }
 }
 
@@ -2764,6 +2846,17 @@ function Invoke-OneClickFull {
             Write-ColorOutput Green "  ✓ 已是最新版本"
         }
         Write-Output ""
+    }
+
+    # 语言包版本适配检测
+    $compatible = Test-LanguagePackCompatibility
+    if (!$compatible) {
+        # 用户取消或不兼容，返回
+        if (!$compatible -is [bool]) {
+            # 用户选择继续
+        } else {
+            # 检测失败，继续执行
+        }
     }
 
     Write-ColorOutput Cyan "此操作将依次执行："

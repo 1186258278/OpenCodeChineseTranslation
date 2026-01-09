@@ -219,6 +219,44 @@ git config --global https.proxy http://127.0.0.1:PORT
 
 ---
 
+## Version Compatibility
+
+The language pack ensures compatibility with OpenCode source code via Git Commit matching.
+
+**Version Detection Mechanism:**
+
+| Check Item | Description |
+|------------|-------------|
+| Supported Version | Commit Hash of tested OpenCode version in config |
+| Current Version | Actual Commit of OpenCode submodule at runtime |
+| Mismatch Handling | Show warning and prompt to contact maintainer |
+
+**Issues when versions don't match:**
+- Some new text may not be translated
+- Translated text may display incorrectly
+- UI elements may appear broken
+
+**How to update language pack:**
+
+If you encounter a version mismatch warning, please contact the maintainer:
+
+| Contact Method | Description |
+|----------------|-------------|
+| WeChat | CodeCreator |
+| GitHub | [Submit Issue](https://github.com/1186258278/OpenCodeChineseTranslation/issues) |
+
+**Maintainer Info:**
+
+```json
+{
+  "name": "CodeCreator",
+  "wechat": "CodeCreator",
+  "github": "https://github.com/1186258278/OpenCodeChineseTranslation"
+}
+```
+
+---
+
 ## Contributing
 
 Contributions are welcome!

@@ -5,7 +5,6 @@
     "undo the last message": "撤销上一条消息",
     "redo the last message": "重做上一条消息",
     "compact the session": "压缩会话",
-    "description: \"unshare a session\"": "description: \"取消分享会话\"",
     "rename session": "重命名会话",
     "copy session transcript to clipboard": "复制会话记录到剪贴板",
     "export session transcript to file": "导出会话记录到文件",

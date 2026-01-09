@@ -221,6 +221,44 @@ git config --global https.proxy http://127.0.0.1:端口
 
 ---
 
+### 版本适配
+
+语言包通过 Git Commit 确保与 OpenCode 源码版本匹配。
+
+**版本检测机制：**
+
+| 检测项 | 说明 |
+|--------|------|
+| 支持版本 | 语言包配置中记录测试通过的 Commit Hash |
+| 当前版本 | 运行时检测 OpenCode 子模块的实际 Commit |
+| 不匹配处理 | 显示警告并提示联系维护者更新 |
+
+**版本不匹配时可能出现的问题：**
+- 部分新增文本无法汉化
+- 已修改的文本汉化显示错误
+- 界面元素显示异常
+
+**如何更新语言包：**
+
+如果遇到版本不匹配警告，请通过以下方式联系维护者：
+
+| 联系方式 | 说明 |
+|----------|------|
+| 微信 | CodeCreator |
+| GitHub | [提交 Issue](https://github.com/1186258278/OpenCodeChineseTranslation/issues) |
+
+**维护者信息：**
+
+```json
+{
+  "name": "CodeCreator",
+  "wechat": "CodeCreator",
+  "github": "https://github.com/1186258278/OpenCodeChineseTranslation"
+}
+```
+
+---
+
 ### 贡献指南
 
 欢迎贡献代码和翻译！

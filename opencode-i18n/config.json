@@ -1,8 +1,14 @@
 {
-  "version": "5.0",
+  "version": "5.1",
   "description": "OpenCode 中文汉化配置文件（模块化结构）",
   "lastUpdate": "2026-01-10",
   "testPassRate": "100%",
+  "supportedCommit": "0f2124db32606020766d237ce774a3c2e7783ee3",
+  "maintainer": {
+    "name": "CodeCreator",
+    "wechat": "CodeCreator",
+    "github": "https://github.com/1186258278/OpenCodeChineseTranslation"
+  },
   "modules": {
     "dialogs": [
       "dialogs/dialog-agent.json",

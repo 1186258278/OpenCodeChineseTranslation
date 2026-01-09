@@ -55,7 +55,6 @@
     "title=\"# Questions\"": "title=\"# 问题\"",
     "title: \"Page up\"": "title: \"向上翻页\"",
     "{revert()!.reverted.length} message reverted": "{revert()!.reverted.length} 条消息已撤销",
-    "|| \"(no answer)\"": "|| \"(无答案)\"",
     "Fetching from the web...": "正在从网络获取..."
   }
 }
