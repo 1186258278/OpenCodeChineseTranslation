@@ -1,5 +1,5 @@
 # ========================================
-# OpenCode 中文汉化版 - 管理工具 v4.9
+# OpenCode 中文汉化版 - 管理工具 v5.0
 # ========================================
 
 # 配置路径 (使用脚本所在目录，自动适配)
@@ -539,6 +539,8 @@ function Get-I18NConfig {
     # 加载所有模块文件
     $allModules = @{}
 
+    Write-ColorOutput DarkGray "正在加载汉化配置..."
+
     # 辅助函数：加载模块列表
     function Load-Modules {
         param(
@@ -546,7 +548,10 @@ function Get-I18NConfig {
             [array]$ModuleList,
             [hashtable]$ModuleHash
         )
+        $total = $ModuleList.Count
+        $current = 0
         foreach ($module in $ModuleList) {
+            $current++
             $modulePath = "$I18N_DIR\$module"
             if (Test-Path $modulePath) {
                 try {
@@ -2091,6 +2096,8 @@ function Apply-OtherPatches {
     $totalCount = $allModules.Count
     $currentIndex = 0
 
+    Write-ColorOutput DarkGray "开始应用 $totalCount 个模块的汉化..."
+
     foreach ($patchKey in $allModules) {
         $currentIndex++
         $patch = $null
@@ -2104,7 +2111,8 @@ function Apply-OtherPatches {
 
         if (!$patch) { continue }
 
-        Write-ColorOutput Yellow "[$currentIndex/$totalCount] 应用 $($patch.description)..."
+        $description = if ($patch.description) { $patch.description } else { $patchKey }
+        Write-ColorOutput Yellow "[$currentIndex/$totalCount] $description"
 
         $replacements = @{}
 
@@ -2119,7 +2127,7 @@ function Apply-OtherPatches {
             }
         }
 
-        Apply-SinglePatch -Name $patchKey -File $patch.file -Replacements $replacements -Description $patch.description
+        Apply-SinglePatch -Name $patchKey -File $patch.file -Replacements $replacements -Description $null
     }
 
     Write-ColorOutput Green "所有汉化补丁已应用！"
@@ -2144,11 +2152,26 @@ function Set-AssumeUnchanged {
     }
 
     $markedCount = 0
-    foreach ($file in $modifiedFiles) {
-        git update-index --assume-unchanged $file 2>&1 | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-            $markedCount++
+    $totalFiles = @($modifiedFiles).Count
+
+    if ($totalFiles -gt 0) {
+        # 批量处理：每批500个文件
+        $batchSize = 500
+        $batches = [Math]::Ceiling($totalFiles / $batchSize)
+
+        for ($b = 0; $b -lt $batches; $b++) {
+            $startIdx = $b * $batchSize
+            $endIdx = [Math]::Min($startIdx + $batchSize - 1, $totalFiles - 1)
+            $batchFiles = @($modifiedFiles)[$startIdx..$endIdx]
+
+            # 使用数组 splatting 传递参数
+            $null = git update-index --assume-unchanged @batchFiles 2>&1
+            $markedCount += $batchFiles.Count
+
+            $percent = [Math]::Floor(($markedCount / $totalFiles) * 100)
+            Write-Host "`r   → 进度: $percent% ($markedCount/$totalFiles)" -NoNewline
         }
+        Write-Host ""  # 换行
     }
     Pop-Location
 
