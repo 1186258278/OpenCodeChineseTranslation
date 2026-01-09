@@ -1,5 +1,5 @@
 # ========================================
-# OpenCode 中文汉化版 - 管理工具 v3.2
+# OpenCode 中文汉化版 - 管理工具 v4.8
 # ========================================
 
 # 配置路径 (使用脚本所在目录，自动适配)
@@ -30,8 +30,8 @@ if (Test-Path $SRC_DIR) {
 $SCRIPT_SELF = $PSCommandPath
 if ($SCRIPT_SELF -and (Test-Path $SCRIPT_SELF)) {
     $SCRIPT_BACKUP_DIR = "$OUT_DIR\script_backup"
-    $SCRIPT_BACKUP = "$SCRIPT_BACKUP_DIR\opencode-v3.ps1"
-    $SCRIPT_BACKUP_OLD = "$SCRIPT_BACKUP_DIR\opencode-v3.ps1.old"
+    $SCRIPT_BACKUP = "$SCRIPT_BACKUP_DIR\opencode-v4.ps1"
+    $SCRIPT_BACKUP_OLD = "$SCRIPT_BACKUP_DIR\opencode-v4.ps1.old"
 
     # 创建备份目录
     if (!(Test-Path $SCRIPT_BACKUP_DIR)) {
@@ -3298,8 +3298,8 @@ function Restore-Script {
     Write-ColorOutput Cyan "可用备份:"
     Write-Output ""
 
-    $mainBackup = "$scriptBackupDir\opencode-v3.ps1"
-    $oldBackup = "$scriptBackupDir\opencode-v3.ps1.old"
+    $mainBackup = "$scriptBackupDir\opencode-v4.ps1"
+    $oldBackup = "$scriptBackupDir\opencode-v4.ps1.old"
 
     $hasMain = Test-Path $mainBackup
     $hasOld = Test-Path $oldBackup
@@ -3591,7 +3591,7 @@ function Show-ProjectInfo {
 
 ## 基本信息
 - 项目名称: OpenCode 中文汉化管理工具
-- 版本: v3.1
+- 版本: v4.8
 - 脚本路径: $PSCommandPath
 - 配置文件: $I18N_CONFIG
 - 源码目录: $SRC_DIR
@@ -3601,7 +3601,7 @@ function Show-ProjectInfo {
 ## 目录结构
 ```
 $SCRIPT_DIR\
-├── opencode-v3.ps1          # 主管理脚本
+├── opencode-v4.ps1          # 主管理脚本
 ├── opencode-i18n.json       # 汉化配置文件
 ├── opencode.exe             # 编译输出
 └── opencode-zh-CN\          # OpenCode 源码
