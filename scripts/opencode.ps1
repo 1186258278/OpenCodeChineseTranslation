@@ -1237,6 +1237,21 @@ function Update-Source {
         return
     }
 
+    # 检查是否有本地修改（汉化导致的）
+    $status = git status --porcelain 2>&1
+    $hasLocalChanges = $status -match "^ M"
+
+    if ($hasLocalChanges) {
+        Write-ColorOutput Yellow "检测到本地修改（汉化内容），正在临时还原..."
+        Write-ColorOutput DarkGray "注意：汉化将在拉取后重新应用"
+
+        # 还原所有修改（汉化会在拉取后重新应用）
+        git restore . 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-ColorOutput Green "本地修改已临时还原"
+        }
+    }
+
     Write-ColorOutput Yellow "正在拉取最新代码..."
 
     # 尝试 git pull
@@ -1273,6 +1288,12 @@ function Update-Source {
 
     if ($success) {
         Write-ColorOutput Green "代码更新完成！"
+
+        # 如果之前有汉化修改，提示重新应用
+        if ($hasLocalChanges) {
+            Write-Output ""
+            Write-ColorOutput Yellow "建议：运行 [2] 应用汉化 重新翻译"
+        }
     } else {
         Write-ColorOutput Yellow "git pull 失败（可能网络问题），但不影响汉化"
     }
@@ -2013,6 +2034,18 @@ function Invoke-OneClickFull {
 
         $pullConfirm = Read-Host "检测到新版本，是否拉取？(Y/n)"
         if ($pullConfirm -ne "n" -and $pullConfirm -ne "N") {
+            # 检查是否有本地修改（汉化导致的）
+            $status = git status --porcelain 2>&1
+            $hasLocalChanges = $status -match "^ M"
+
+            if ($hasLocalChanges) {
+                Write-ColorOutput Yellow "检测到本地修改（汉化内容），正在临时还原..."
+                git restore . 2>&1 | Out-Null
+                if ($LASTEXITCODE -eq 0) {
+                    Write-ColorOutput Green "本地修改已临时还原"
+                }
+            }
+
             Write-ColorOutput Yellow "执行 git pull..."
 
             # 智能拉取（处理代理问题）
