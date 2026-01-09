@@ -2,9 +2,16 @@
   "file": "src/cli/cmd/tui/component/dialog-status.tsx",
   "description": "状态对话框",
   "replacements": {
-    "Status": "状态",
-    "No MCP Servers": "0 个 MCP 服务器",
+    "Status\n": "状态\n",
+    "No MCP Servers": "暂无 MCP 服务器",
     "MCP Servers": "MCP 服务器",
-    "LSP Servers": "LSP 服务器"
+    "LSP Servers": "LSP 服务器",
+    "No Formatters": "暂无格式化工具",
+    "Formatters": "格式化工具",
+    "No Plugins": "暂无插件",
+    "Plugins": "插件",
+    "Connected": "已连接",
+    "Disabled in configuration": "配置中已禁用",
+    "Needs authentication": "需要认证"
   }
 }

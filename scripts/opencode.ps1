@@ -1,5 +1,5 @@
 # ========================================
-# OpenCode 中文汉化版 - 管理工具 v5.1
+# OpenCode 中文汉化版 - 管理工具 v5.2
 # ========================================
 
 # 配置路径 (使用脚本所在目录，自动适配)
@@ -496,6 +496,351 @@ function Get-BunVersion {
 
 function Show-Separator {
     Write-Host "────────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
+}
+
+# ==================== 公共工具函数 ====================
+
+<#
+.SYNOPSIS
+    检测本地代理端口
+.DESCRIPTION
+    检测常见代理端口，返回代理 URL 或 null
+#>
+function Find-LocalProxy {
+    $commonProxyPorts = @(7897, 7898, 7890, 7891, 7892, 7893, 10809, 10808, 1087, 1080, 1086, 1081, 8080, 9090, 8888, 10872)
+
+    foreach ($port in $commonProxyPorts) {
+        try {
+            $tcp = New-Object System.Net.Sockets.TcpClient
+            $tcp.ReceiveTimeout = 2000
+            $tcp.SendTimeout = 2000
+            $tcp.Connect("127.0.0.1", $port)
+            $tcp.Close()
+            return "http://127.0.0.1:$port"
+        } catch {
+            # 端口未开放，继续检查下一个
+        }
+    }
+
+    # 检查环境变量中的代理
+    $envProxy = $env:HTTP_PROXY -or $env:http_proxy -or $env:ALL_PROXY -or $env:all_proxy
+    if ($envProxy) {
+        return $envProxy
+    }
+
+    return $null
+}
+
+<#
+.SYNOPSIS
+    检测并配置代理
+.DESCRIPTION
+    检测代理并配置到 git，返回代理信息
+#>
+function Initialize-Proxy {
+    Write-Host "   → 检测代理..." -NoNewline
+    $proxy = Find-LocalProxy
+
+    if ($proxy) {
+        Write-Host " 代理: $proxy" -ForegroundColor DarkGray
+        git config http.proxy $proxy
+        git config https.proxy $proxy
+    } else {
+        Write-Host " 直连" -ForegroundColor DarkGray
+    }
+
+    return $proxy
+}
+
+<#
+.SYNOPSIS
+    取消代理配置
+#>
+function Remove-ProxyConfig {
+    git config --unset http.proxy 2>&1 | Out-Null
+    git config --unset https.proxy 2>&1 | Out-Null
+}
+
+<#
+.SYNOPSIS
+    执行 Git fetch 和 merge 操作
+.DESCRIPTION
+    使用 fetch + merge 策略拉取代码，支持 stash 恢复
+.PARAMETER CurrentBranch
+    当前分支名
+.PARAMETER HasLocalChanges
+    是否有本地修改
+.PARAMETER UseProxy
+    是否使用代理
+.OUTPUTS
+    Hashtable 包含 Success 和 StashConflict 标志
+#>
+function Invoke-GitFetchMerge {
+    param(
+        [string]$CurrentBranch = "dev",
+        [bool]$HasLocalChanges = $false,
+        [bool]$UseProxy = $false
+    )
+
+    $result = @{ Success = $false; StashConflict = $false }
+    $stashSuccess = $false
+
+    # 暂存本地修改
+    if ($HasLocalChanges) {
+        Write-Host "   → 暂存汉化..." -ForegroundColor Yellow
+        $stashOutput = git stash push -m "opencode-i18n-auto-stash" 2>&1
+        $stashSuccess = ($LASTEXITCODE -eq 0)
+        if (!$stashSuccess) {
+            Write-Host "   → Stash 失败: $stashOutput" -ForegroundColor Red
+        }
+    }
+
+    # Fetch
+    Write-Host "   → 获取 origin/$CurrentBranch" -ForegroundColor DarkGray
+    $refspec = "refs/heads/{0}:refs/remotes/origin/{0}" -f $CurrentBranch
+    $fetchOutput = & git fetch origin $refspec 2>&1
+    $fetchSuccess = ($LASTEXITCODE -eq 0)
+
+    if (!$fetchSuccess) {
+        Write-Host "   → Fetch 失败: $fetchOutput" -ForegroundColor Red
+        if ($HasLocalChanges -and $stashSuccess) {
+            Restore-GitStash
+        }
+        return $result
+    }
+
+    # Merge - 尝试快进
+    Write-Host "   → 合并更新" -ForegroundColor DarkGray
+    $mergeOutput = & git merge --ff-only "origin/$CurrentBranch" 2>&1
+    $result.Success = ($LASTEXITCODE -eq 0)
+
+    # 快进失败则尝试普通合并
+    if (!$result.Success) {
+        Write-Host "   → 快进失败，尝试普通合并..." -ForegroundColor Yellow
+        $mergeOutput = & git merge "origin/$CurrentBranch" --no-edit 2>&1
+        $result.Success = ($LASTEXITCODE -eq 0)
+    }
+
+    # 恢复 stash
+    if ($HasLocalChanges -and $stashSuccess -and $result.Success) {
+        $result.StashConflict = -not (Restore-GitStash)
+    }
+
+    return $result
+}
+
+<#
+.SYNOPSIS
+    恢复 Git stash
+.OUTPUTS
+    bool 成功返回 true，冲突返回 false
+#>
+function Restore-GitStash {
+    $stashList = git stash list 2>&1
+    $stashName = $stashList | Select-String "opencode-i18n-auto-stash" | Select-Object -First 1
+
+    if (!$stashName) {
+        return $true
+    }
+
+    $stashIndex = ($stashName.ToString() -split ":")[0].Trim()
+    $popOutput = git stash pop "$stashIndex" 2>&1
+
+    if ($LASTEXITCODE -ne 0) {
+        # 有冲突，放弃 stash
+        Write-Host "   → 检测到冲突，放弃 stash" -ForegroundColor Yellow
+        git stash drop "$stashIndex" 2>&1 | Out-Null
+        return $false
+    }
+
+    return $true
+}
+
+<#
+.SYNOPSIS
+    批量解除文件 assume-unchanged 标记
+.PARAMETER Files
+    文件列表数组
+#>
+function Unmark-AssumeUnchanged {
+    param([array]$Files)
+
+    if (!$Files) { return }
+
+    $markedCount = $Files.Count
+    Write-Host "   → 解除 $markedCount 个文件的忽略标记" -ForegroundColor DarkGray
+
+    $batchSize = 500
+    $batches = [Math]::Ceiling($markedCount / $batchSize)
+    $completed = 0
+
+    for ($b = 0; $b -lt $batches; $b++) {
+        $startIdx = $b * $batchSize
+        $endIdx = [Math]::Min($startIdx + $batchSize - 1, $markedCount - 1)
+        $batchPaths = $Files[$startIdx..$endIdx] | ForEach-Object { $_.Substring(2) }
+
+        try {
+            $null = git update-index --no-assume-unchanged @batchPaths 2>&1
+            $completed += $batchPaths.Count
+            $percent = [Math]::Floor(($completed / $markedCount) * 100)
+            Write-Host "`r   → 进度: $percent% ($completed/$markedCount)" -NoNewline
+        } catch {
+            # 批量失败，逐个处理
+            Write-Host "`n   → 批量失败，逐个处理..." -ForegroundColor Yellow
+            foreach ($file in $Files) {
+                $filePath = $file.Substring(2)
+                git update-index --no-assume-unchanged $filePath 2>&1 | Out-Null
+            }
+            break
+        }
+    }
+    Write-Host ""
+}
+
+<#
+.SYNOPSIS
+    从配置对象获取属性值（兼容 hashtable 和 PSObject）
+.PARAMETER Config
+    配置对象
+.PARAMETER Key
+    属性键名
+.OUTPUTS
+    属性值或 null
+#>
+function Get-ConfigValue {
+    param(
+        [object]$Config,
+        [string]$Key
+    )
+
+    if ($Config -is [hashtable]) {
+        return $Config[$Key]
+    } else {
+        return $Config.PSObject.Properties[$Key].Value
+    }
+}
+
+<#
+.SYNOPSIS
+    获取配置对象的所有键名（兼容 hashtable 和 PSObject）
+.PARAMETER Config
+    配置对象
+.OUTPUTS
+    键名数组
+#>
+function Get-ConfigKeys {
+    param([object]$Config)
+
+    if ($Config -is [hashtable]) {
+        return @($Config.Keys)
+    } else {
+        return @($Config.PSObject.Properties.Name)
+    }
+}
+
+<#
+.SYNOPSIS
+    将 replacements 转换为 hashtable
+.PARAMETER Replacements
+    原始 replacements 对象
+.OUTPUTS
+    hashtable
+#>
+function ConvertTo-ReplacementHashtable {
+    param([object]$Replacements)
+
+    $result = @{}
+
+    if ($Replacements -is [System.Management.Automation.PSCustomObject]) {
+        $Replacements.PSObject.Properties | ForEach-Object {
+            $result[$_.Name] = $_.Value
+        }
+    } elseif ($Replacements -is [hashtable]) {
+        return $Replacements
+    }
+
+    return $result
+}
+
+<#
+.SYNOPSIS
+    获取 patch 配置（兼容 hashtable 和 PSObject）
+.PARAMETER Config
+    配置对象
+.PARAMETER PatchKey
+    patch 键名
+.OUTPUTS
+    patch 对象或 null
+#>
+function Get-PatchConfig {
+    param(
+        [object]$Config,
+        [string]$PatchKey
+    )
+
+    if ($Config.patches -is [hashtable]) {
+        return $Config.patches[$PatchKey]
+    } else {
+        return $Config.patches.$PatchKey
+    }
+}
+
+<#
+.SYNOPSIS
+    格式化北京时间（UTC+8）
+.PARAMETER IsoTime
+    ISO 8601 时间字符串
+.OUTPUTS
+    格式化的时间字符串
+#>
+function Format-BeijingTime {
+    param([string]$IsoTime)
+
+    try {
+        $dt = [DateTime]::Parse($IsoTime)
+        $beijingTime = $dt.ToUniversalTime().AddHours(8)
+        $localNow = Get-Date
+        $diff = $localNow - $dt
+        $timeStr = $beijingTime.ToString("MM-dd HH:mm")
+
+        # 相对时间
+        if ($diff.TotalDays -lt 1) {
+            if ($diff.TotalHours -lt 1) {
+                if ($diff.TotalMinutes -lt 1) {
+                    return "$timeStr (刚刚)"
+                }
+                return "$timeStr ($([int]$diff.TotalMinutes)分钟前)"
+            }
+            return "$timeStr ($([int]$diff.TotalHours)小时前)"
+        } elseif ($diff.TotalDays -lt 7) {
+            return "$timeStr ($([int]$diff.TotalDays)天前)"
+        }
+
+        return $beijingTime.ToString("yyyy-MM-dd HH:mm")
+    } catch {
+        return $IsoTime
+    }
+}
+
+<#
+.SYNOPSIS
+    计算 replacements 对象的项目数量
+.PARAMETER Replacements
+    replacements 对象
+.OUTPUTS
+    项目数量
+#>
+function Get-ReplacementsCount {
+    param([object]$Replacements)
+
+    if (!$Replacements) { return 0 }
+    if ($Replacements -is [hashtable]) {
+        return $Replacements.Count
+    }
+    if ($Replacements -is [System.Management.Automation.PSCustomObject]) {
+        return ($Replacements.PSObject.Properties | Measure-Object).Count
+    }
+    return 0
 }
 
 function Get-I18NConfig {
@@ -1135,42 +1480,6 @@ function Show-Changelog {
         }
         Pop-Location
 
-        # 格式化时间函数（转换为北京时间 UTC+8）
-        function Format-CommitTime {
-            param([string]$isoTime)
-            try {
-                # 解析 ISO 8601 时间（包含时区）
-                $commitDate = [DateTime]::Parse($isoTime)
-
-                # 转换为北京时间 (UTC+8)
-                $beijingTime = $commitDate.ToUniversalTime().AddHours(8)
-
-                # 计算相对时间（基于本地时间）
-                $localNow = Get-Date
-                $diff = $localNow - $commitDate
-
-                # 格式化北京时间
-                $timeStr = $beijingTime.ToString("MM-dd HH:mm")
-
-                # 相对时间显示
-                if ($diff.TotalDays -lt 1) {
-                    if ($diff.TotalHours -lt 1) {
-                        if ($diff.TotalMinutes -lt 1) {
-                            return "$timeStr (刚刚)"
-                        }
-                        return "$timeStr ($([int]$diff.TotalMinutes)分钟前)"
-                    }
-                    return "$timeStr ($([int]$diff.TotalHours)小时前)"
-                } elseif ($diff.TotalDays -lt 7) {
-                    return "$timeStr ($([int]$diff.TotalDays)天前)"
-                }
-
-                return $beijingTime.ToString("yyyy-MM-dd HH:mm")
-            } catch {
-                return $isoTime
-            }
-        }
-
         # 显示版本状态
         if ($info.NeedsUpdate) {
             $newCommits = git log --oneline "$($info.LocalCommit)..$($info.RemoteCommit)" 2>&1
@@ -1206,8 +1515,8 @@ function Show-Changelog {
             # 格式化变更
             $changes = if ($c.Files -ne "-") { "+$($c.Insertions)/-$($c.Deletions)" } else { "-" }
 
-            # 格式化时间（相对时间）
-            $timeDisplay = Format-CommitTime $c.Time
+            # 格式化时间（使用全局函数）
+            $timeDisplay = Format-BeijingTime $c.Time
 
             # 输出行
             if ($isLocal) {
@@ -1285,7 +1594,7 @@ function Show-CommitDetail {
     Write-ColorOutput Cyan "   作者: $($Commit.Author)"
 
     # 格式化时间
-    $formattedTime = Format-CommitTime $Commit.Time
+    $formattedTime = Format-BeijingTime $Commit.Time
     Write-ColorOutput Cyan "   时间: $formattedTime"
     Write-Output ""
     Write-ColorOutput Cyan "   消息:"
@@ -1849,6 +2158,10 @@ function Restore-Backup {
 # ==================== 功能函数 ====================
 
 function Update-Source {
+    <#
+    .SYNOPSIS
+        拉取最新代码
+    #>
     Write-Header
     Show-Separator
     Write-Output "   拉取最新代码"
@@ -1869,176 +2182,54 @@ function Update-Source {
         return
     }
 
-    # 步骤1: 检测代理
+    # 步骤1: 检测并配置代理
     Write-StepMessage "检测网络代理..." "INFO"
-    $detectedProxy = $null
-    # Clash 端口优先
-    $commonProxyPorts = @(7897, 7898, 7890, 7891, 7892, 7893, 10809, 10808, 1087, 1080, 1086, 1081, 8080, 9090, 8888, 10872)
+    $detectedProxy = Initialize-Proxy
 
-    # 检查常见的代理端口（增加超时时间）
-    foreach ($port in $commonProxyPorts) {
-        try {
-            $tcp = New-Object System.Net.Sockets.TcpClient
-            $tcp.ReceiveTimeout = 2000
-            $tcp.SendTimeout = 2000
-            $tcp.Connect("127.0.0.1", $port)
-            $tcp.Close()
-            $detectedProxy = "http://127.0.0.1:$port"
-            Write-Host "   → 检测到代理: 127.0.0.1:$port" -ForegroundColor DarkGray
-            break
-        } catch {
-            # 端口未开放，继续检查下一个
-        }
-    }
-
-    # 检查环境变量中的代理
-    if (!$detectedProxy) {
-        $envProxy = $env:HTTP_PROXY -or $env:http_proxy -or $env:ALL_PROXY -or $env:all_proxy
-        if ($envProxy) {
-            $detectedProxy = $envProxy
-            Write-Host "   → 检测到环境变量代理: $envProxy" -ForegroundColor DarkGray
-        }
-    }
-
-    if (!$detectedProxy) {
-        Write-Host "   → 使用直连" -ForegroundColor DarkGray
-    }
-
-    # 步骤2: 解除文件忽略标记（批量处理）
+    # 步骤2: 解除文件忽略标记
     Write-StepMessage "解除文件忽略标记..." "INFO"
     $beforePull = git ls-files -v | Where-Object { $_ -match "^h" }
     if ($beforePull) {
-        $markedFiles = @($beforePull)
-        $markedCount = $markedFiles.Count
-        Write-Host "   → 解除 $markedCount 个文件的忽略标记" -ForegroundColor DarkGray
-
-        # 批量处理：分批解除标记（避免Windows命令行长度限制）
-        $batchSize = 500
-        $batches = [Math]::Ceiling($markedCount / $batchSize)
-
-        for ($b = 0; $b -lt $batches; $b++) {
-            $startIdx = $b * $batchSize
-            $endIdx = [Math]::Min($startIdx + $batchSize - 1, $markedCount - 1)
-            $batchPaths = $markedFiles[$startIdx..$endIdx] | ForEach-Object { $_.Substring(2) }
-
-            try {
-                $null = git update-index --no-assume-unchanged @batchPaths 2>&1
-            } catch {
-                # 批量失败时回退到逐个处理
-                Write-Host "   → 批量失败，逐个处理..." -ForegroundColor Yellow
-                foreach ($file in $markedFiles) {
-                    $filePath = $file.Substring(2)
-                    git update-index --no-assume-unchanged $filePath 2>&1 | Out-Null
-                }
-                break
-            }
-        }
-        Write-Host "   → 完成: $markedCount 个文件" -ForegroundColor Green
+        Unmark-AssumeUnchanged -Files @($beforePull)
     } else {
         Write-Host "   → 无需解除" -ForegroundColor DarkGray
     }
 
-    # 步骤3: 配置代理并拉取
-    if ($detectedProxy) {
-        git config http.proxy $detectedProxy
-        git config https.proxy $detectedProxy
-    }
-
-    Write-StepMessage "从远程仓库拉取最新代码..." "INFO"
-    # 获取当前分支名，使用精确拉取避免合并冲突
-    $currentBranch = "dev"  # 默认分支
+    # 步骤3: 获取当前分支
+    $currentBranch = "dev"
     $branchOutput = git rev-parse --abbrev-ref HEAD 2>&1
     if ($LASTEXITCODE -eq 0 -and $branchOutput) {
         $currentBranch = $branchOutput.Trim()
     }
     Write-Host "   → 当前分支: $currentBranch" -ForegroundColor DarkGray
 
-    # 使用 fetch + merge 策略
-    $success = $false
+    # 步骤4: 检查本地修改
+    $hasLocalChanges = [bool](git status --porcelain 2>&1)
 
-    # 检查是否有本地修改（汉化补丁等）
-    $hasLocalChanges = $false
-    $statusOutput = git status --porcelain 2>&1
-    if ($statusOutput) {
-        $hasLocalChanges = $true
-    }
+    # 步骤5: 拉取代码
+    Write-StepMessage "从远程仓库拉取最新代码..." "INFO"
+    $result = Invoke-GitFetchMerge -CurrentBranch $currentBranch -HasLocalChanges $hasLocalChanges
 
-    if ($hasLocalChanges) {
-        Write-Host "   → 检测到本地修改，暂存汉化..." -ForegroundColor Yellow
-        $stashOutput = git stash push -m "opencode-i18n-auto-stash" 2>&1
-        $stashSuccess = ($LASTEXITCODE -eq 0)
-        if (!$stashSuccess) {
-            Write-Host "   → Stash 失败: $stashOutput" -ForegroundColor Red
-        }
-    }
-
-    if ($currentBranch) {
-        Write-Host "   → 获取 origin/$currentBranch" -ForegroundColor DarkGray
-        $fetchOutput = git fetch origin "refs/heads/$currentBranch:refs/remotes/origin/$currentBranch" 2>&1
-        $fetchSuccess = ($LASTEXITCODE -eq 0)
-
-        if ($fetchSuccess) {
-            Write-Host "   → 合并更新" -ForegroundColor DarkGray
-            $mergeOutput = git merge --ff-only "origin/$currentBranch" 2>&1
-            $success = ($LASTEXITCODE -eq 0)
-            if (!$success) {
-                $mergeOutput = git merge "origin/$currentBranch" --no-edit 2>&1
-                $success = ($LASTEXITCODE -eq 0)
-            }
-        } else {
-            Write-Host "   → Fetch 失败: $fetchOutput" -ForegroundColor Red
-        }
-    } else {
-        $pullResult = Invoke-GitCommandWithProgress -Command "pull --no-edit" -Message "   → 拉取代码"
-        $success = $pullResult.Success
-    }
-
-    # 恢复汉化补丁
-    if ($hasLocalChanges -and $stashSuccess) {
-        Write-Host "   → 恢复汉化补丁..." -ForegroundColor Yellow
-        $stashList = git stash list 2>&1
-        $stashName = $stashList | Select-String "opencode-i18n-auto-stash" | Select-Object -First 1
-        if ($stashName) {
-            $stashIndex = ($stashName.ToString() -split ":")[0].Trim()
-            git stash pop "$stashIndex" --index 2>&1 | Out-Null
-        }
-    }
-
-    if (!$success -and $detectedProxy) {
+    # 步骤6: 代理失败时尝试直连
+    if (!$result.Success -and $detectedProxy) {
         Write-StepMessage "代理连接失败，尝试直连..." "WARNING"
-        git config --unset http.proxy
-        git config --unset https.proxy
-        if ($currentBranch) {
-            $fetchOutput = git fetch origin "refs/heads/$currentBranch:refs/remotes/origin/$currentBranch" 2>&1
-            $fetchSuccess = ($LASTEXITCODE -eq 0)
-            if ($fetchSuccess) {
-                $mergeOutput = git merge --ff-only "origin/$currentBranch" 2>&1
-                $success = ($LASTEXITCODE -eq 0)
-                if (!$success) {
-                    $mergeOutput = git merge "origin/$currentBranch" --no-edit 2>&1
-                    $success = ($LASTEXITCODE -eq 0)
-                }
-            } else {
-                Write-Host "   → 直连 Fetch 失败: $fetchOutput" -ForegroundColor Red
-            }
-        } else {
-            $pullResult = Invoke-GitCommandWithProgress -Command "pull --no-edit" -Message "   → 直连拉取"
-            $success = $pullResult.Success
-        }
+        Remove-ProxyConfig
+        $result = Invoke-GitFetchMerge -CurrentBranch $currentBranch -HasLocalChanges $false
     }
 
     Pop-Location
 
-    # 步骤4: 显示结果
+    # 显示结果
     Write-Output ""
-    if ($success) {
+    if ($result.Success) {
         Write-StepMessage "代码更新完成！" "SUCCESS"
         Write-Output ""
         Write-ColorOutput Yellow "   建议：运行 [2] 应用汉化 重新翻译"
+        if ($result.StashConflict) {
+            Write-ColorOutput Yellow "   注意：合并时产生冲突，请运行 [2] 应用汉化"
+        }
     } else {
         Write-StepMessage "更新失败" "ERROR"
-        Write-Output "   $($pullResult.Output)"
-        Write-Output "   $($pullResult.Error)"
     }
 
     Write-Output ""
@@ -2095,8 +2286,6 @@ function Apply-CommandPanelPatch {
     <#
     .SYNOPSIS
         应用命令面板汉化补丁
-    .DESCRIPTION
-        在模块化配置中查找 command-panel 模块并应用
     #>
     $config = Get-I18NConfig
     if (!$config) {
@@ -2104,22 +2293,13 @@ function Apply-CommandPanelPatch {
         return
     }
 
-    # 在模块化配置中查找 command-panel 模块
-    # 可能的键名: commandPanel (旧格式) 或 components-command-panel (新格式)
-    $patch = $null
-    $patchKey = $null
+    # 查找 command-panel 模块（兼容新旧格式）
+    $patch = Get-PatchConfig -Config $config -PatchKey "components-command-panel"
+    $patchKey = "components-command-panel"
 
-    if ($config.patches) {
-        # 尝试新格式（带分类前缀）
-        if ($config.patches["components-command-panel"]) {
-            $patchKey = "components-command-panel"
-            $patch = $config.patches[$patchKey]
-        }
-        # 尝试旧格式
-        elseif ($config.patches.PSObject.Properties.Name -contains "commandPanel") {
-            $patchKey = "commandPanel"
-            $patch = $config.patches.$patchKey
-        }
+    if (!$patch) {
+        $patch = Get-PatchConfig -Config $config -PatchKey "commandPanel"
+        $patchKey = "commandPanel"
     }
 
     if (!$patch) {
@@ -2128,21 +2308,10 @@ function Apply-CommandPanelPatch {
         return
     }
 
-    Write-ColorOutput Yellow "[1/$($config.patches.Count)] 应用命令面板汉化..."
+    $totalModules = if ($config.patches -is [hashtable]) { $config.patches.Count } else { $config.patches.PSObject.Properties.Count }
+    Write-ColorOutput Yellow "[1/$totalModules] 应用命令面板汉化..."
 
-    $replacements = @{}
-
-    # 将 JSON 对象转换为 hashtable
-    if ($patch.replacements) {
-        if ($patch.replacements -is [System.Management.Automation.PSCustomObject]) {
-            $patch.replacements.PSObject.Properties | ForEach-Object {
-                $replacements[$_.Name] = $_.Value
-            }
-        } elseif ($patch.replacements -is [hashtable]) {
-            $replacements = $patch.replacements
-        }
-    }
-
+    $replacements = ConvertTo-ReplacementHashtable -Replacements $patch.replacements
     Apply-SinglePatch -Name "命令面板" -File $patch.file -Replacements $replacements -Description $patch.description
 }
 
@@ -2150,8 +2319,6 @@ function Apply-OtherPatches {
     <#
     .SYNOPSIS
         应用除命令面板外的其他汉化补丁
-    .DESCRIPTION
-        遍历所有模块并应用汉化，排除已单独处理的命令面板
     #>
     $config = Get-I18NConfig
     if (!$config -or !$config.patches) {
@@ -2159,56 +2326,25 @@ function Apply-OtherPatches {
         return
     }
 
-    # 获取所有模块，排除命令面板（已单独处理）
-    # 兼容新旧格式：commandPanel (旧) 和 components-command-panel (新)
-    $allModules = @()
-
-    # 判断 patches 是否是 hashtable
-    if ($config.patches -is [hashtable]) {
-        $allModules = @($config.patches.Keys | Where-Object {
-            $_ -ne "commandPanel" -and $_ -ne "components-command-panel"
-        })
-    } else {
-        # PSObject 格式（旧配置）
-        $allModules = @($config.patches.PSObject.Properties.Name | Where-Object {
-            $_ -ne "commandPanel" -and $_ -ne "components-command-panel"
-        })
+    # 获取所有模块，排除命令面板
+    $allModules = Get-ConfigKeys -Config $config.patches | Where-Object {
+        $_ -ne "commandPanel" -and $_ -ne "components-command-panel"
     }
 
     $totalCount = $allModules.Count
-    $currentIndex = 0
 
     Write-ColorOutput DarkGray "开始应用 $totalCount 个模块的汉化..."
 
-    foreach ($patchKey in $allModules) {
-        $currentIndex++
-        $patch = $null
-
-        # 兼容 hashtable 和 PSObject
-        if ($config.patches -is [hashtable]) {
-            $patch = $config.patches[$patchKey]
-        } else {
-            $patch = $config.patches.$patchKey
-        }
+    for ($i = 0; $i -lt $totalCount; $i++) {
+        $patchKey = $allModules[$i]
+        $patch = Get-PatchConfig -Config $config -PatchKey $patchKey
 
         if (!$patch) { continue }
 
         $description = if ($patch.description) { $patch.description } else { $patchKey }
-        Write-ColorOutput Yellow "[$currentIndex/$totalCount] $description"
+        Write-ColorOutput Yellow "[$($i+1)/$totalCount] $description"
 
-        $replacements = @{}
-
-        # 将 replacements 转换为 hashtable
-        if ($patch.replacements) {
-            if ($patch.replacements -is [System.Management.Automation.PSCustomObject]) {
-                $patch.replacements.PSObject.Properties | ForEach-Object {
-                    $replacements[$_.Name] = $_.Value
-                }
-            } elseif ($patch.replacements -is [hashtable]) {
-                $replacements = $patch.replacements
-            }
-        }
-
+        $replacements = ConvertTo-ReplacementHashtable -Replacements $patch.replacements
         Apply-SinglePatch -Name $patchKey -File $patch.file -Replacements $replacements -Description $null
     }
 
@@ -2266,8 +2402,6 @@ function Test-I18NPatches {
     <#
     .SYNOPSIS
         验证汉化补丁是否成功应用
-    .DESCRIPTION
-        检查目标文件是否包含预期的中文翻译，返回验证结果
     #>
     Write-Header
     Show-Separator
@@ -2293,31 +2427,18 @@ function Test-I18NPatches {
     Write-StepMessage "开始验证汉化结果..." "INFO"
     Write-Host ""
 
-    # 获取所有模块键名（兼容 hashtable 和 PSObject）
-    $patchKeys = @()
-    if ($config.patches -is [hashtable]) {
-        $patchKeys = @($config.patches.Keys)
-    } else {
-        $patchKeys = @($config.patches.PSObject.Properties.Name)
-    }
-
-    $currentIndex = 0
+    $patchKeys = Get-ConfigKeys -Config $config.patches
     $totalKeys = $patchKeys.Count
 
-    foreach ($patchKey in $patchKeys) {
-        $currentIndex++
+    for ($i = 0; $i -lt $totalKeys; $i++) {
+        $patchKey = $patchKeys[$i]
+        $currentIndex = $i + 1
+
         # 显示进度
         $percent = [math]::Floor(($currentIndex / $totalKeys) * 100)
         Write-Host "`r   验证进度: [$percent%] $currentIndex/$totalKeys - $patchKey" -NoNewline
 
-        $patch = $null
-        # 兼容 hashtable 和 PSObject
-        if ($config.patches -is [hashtable]) {
-            $patch = $config.patches[$patchKey]
-        } else {
-            $patch = $config.patches.$patchKey
-        }
-
+        $patch = Get-PatchConfig -Config $config -PatchKey $patchKey
         if (!$patch -or !$patch.file) { continue }
 
         $targetFile = "$PACKAGE_DIR\$($patch.file)"
@@ -2332,37 +2453,19 @@ function Test-I18NPatches {
         $patchPassed = $true
         $patchFailed = @()
 
-        # 获取 replacements
-        $replacements = $patch.replacements
-        if ($replacements -is [System.Management.Automation.PSCustomObject]) {
-            $replacementsProps = $replacements.PSObject.Properties
-        } elseif ($replacements -is [hashtable]) {
-            $replacementsProps = $replacements.GetEnumerator()
-        } else {
-            continue
-        }
+        $replacements = ConvertTo-ReplacementHashtable -Replacements $patch.replacements
 
-        foreach ($replacement in $replacementsProps) {
+        foreach ($item in $replacements.GetEnumerator()) {
             $totalTests++
-            $original = if ($replacement -is [System.Management.Automation.PSPropertyInfo]) {
-                $replacement.Name
-            } else {
-                $replacement.Key
-            }
-            $expected = if ($replacement -is [System.Management.Automation.PSPropertyInfo]) {
-                $replacement.Value
-            } else {
-                $replacement.Value
-            }
 
-            # 检查文件中是否包含翻译后的文本（使用 IndexOf 避免通配符问题）
-            if ($content.IndexOf($expected) -ge 0) {
+            # 检查文件中是否包含翻译后的文本
+            if ($content.IndexOf($item.Value) -ge 0) {
                 $passedTests++
             } else {
                 $patchPassed = $false
                 $patchFailed += @{
-                    Original = $original
-                    Expected = $expected
+                    Original = $item.Key
+                    Expected = $item.Value
                 }
             }
         }
@@ -2443,8 +2546,6 @@ function Debug-I18NFailure {
     <#
     .SYNOPSIS
         汉化失败调试工具
-    .DESCRIPTION
-        帮助定位汉化失败的原因，显示原文内容上下文
     #>
     Write-Header
     Show-Separator
@@ -2461,20 +2562,10 @@ function Debug-I18NFailure {
     Write-ColorOutput Cyan "选择要调试的模块:"
     Write-Output ""
 
-    # 获取所有模块键名（兼容 hashtable 和 PSObject）
-    $patches = @()
-    if ($config.patches -is [hashtable]) {
-        $patches = @($config.patches.Keys)
-    } else {
-        $patches = @($config.patches.PSObject.Properties.Name)
-    }
+    $patches = Get-ConfigKeys -Config $config.patches
 
     for ($i = 0; $i -lt $patches.Count; $i++) {
-        $patch = if ($config.patches -is [hashtable]) {
-            $config.patches[$patches[$i]]
-        } else {
-            $config.patches.($patches[$i])
-        }
+        $patch = Get-PatchConfig -Config $config -PatchKey $patches[$i]
         Write-Output "  [$($i+1)] $($patches[$i]) - $($patch.description)"
     }
     Write-Output "  [0] 返回"
@@ -2493,11 +2584,7 @@ function Debug-I18NFailure {
     }
 
     $patchKey = $patches[$index]
-    $patch = if ($config.patches -is [hashtable]) {
-        $config.patches[$patchKey]
-    } else {
-        $config.patches.$patchKey
-    }
+    $patch = Get-PatchConfig -Config $config -PatchKey $patchKey
     $targetFile = "$PACKAGE_DIR\$($patch.file)"
 
     if (!(Test-Path $targetFile)) {
@@ -2514,41 +2601,19 @@ function Debug-I18NFailure {
     Write-Output ""
 
     $content = Get-Content $targetFile -Raw -Encoding UTF8
+    $replacements = ConvertTo-ReplacementHashtable -Replacements $patch.replacements
 
-    # 获取 replacements（兼容不同格式）
-    $replacements = $patch.replacements
-    if ($replacements -is [System.Management.Automation.PSCustomObject]) {
-        $replacementsProps = $replacements.PSObject.Properties
-    } elseif ($replacements -is [hashtable]) {
-        $replacementsProps = $replacements.GetEnumerator()
-    } else {
-        Write-ColorOutput Red "无法读取替换配置"
-        Read-Host "按回车键继续"
-        return
-    }
-
-    foreach ($replacement in $replacementsProps) {
-        $original = if ($replacement -is [System.Management.Automation.PSPropertyInfo]) {
-            $replacement.Name
-        } else {
-            $replacement.Key
-        }
-        $expected = if ($replacement -is [System.Management.Automation.PSPropertyInfo]) {
-            $replacement.Value
-        } else {
-            $replacement.Value
-        }
-
-        $hasOriginal = $content -like "*$original*"
-        $hasExpected = $content -like "*$expected*"
+    foreach ($item in $replacements.GetEnumerator()) {
+        $hasOriginal = $content -like "*$($item.Key)*"
+        $hasExpected = $content -like "*$($item.Value)*"
 
         if ($hasExpected) {
-            Write-ColorOutput Green "  ✓ $original → $expected"
+            Write-ColorOutput Green "  ✓ $($item.Key) → $($item.Value)"
         } elseif ($hasOriginal) {
-            Write-ColorOutput Red "  ✗ $original → $expected"
+            Write-ColorOutput Red "  ✗ $($item.Key) → $($item.Value)"
             Write-ColorOutput Yellow "    状态: 原文存在但替换失败"
         } else {
-            Write-ColorOutput Yellow "  ? $original → $expected"
+            Write-ColorOutput Yellow "  ? $($item.Key) → $($item.Value)"
             Write-ColorOutput Yellow "    状态: 原文不存在（可能已更新）"
         }
     }
@@ -3330,6 +3395,10 @@ function Open-OutputDirectory {
 }
 
 function Restore-OriginalFiles {
+    <#
+    .SYNOPSIS
+        还原原始文件
+    #>
     Write-Header
     Write-ColorOutput Cyan "  还原原始文件"
     Write-Output ""
@@ -3342,7 +3411,6 @@ function Restore-OriginalFiles {
     $method = Read-Host "请选择"
 
     if ($method -eq "2") {
-        # Git 还原 - 最彻底的方式
         Write-Output ""
         Write-ColorOutput Yellow "警告：这将丢弃所有本地修改！"
         $confirm2 = Read-Host "确定继续？(yes/NO)"
@@ -3363,25 +3431,13 @@ function Restore-OriginalFiles {
     Write-Output ""
     Write-ColorOutput Yellow "正在从备份还原..."
 
-    # 从配置读取所有需要汉化的文件
     $config = Get-I18NConfig
     $filesToRestore = @()
 
-    # 兼容 hashtable 和 PSObject
-    $patchKeys = @()
-    if ($config.patches -is [hashtable]) {
-        $patchKeys = @($config.patches.Keys)
-    } else {
-        $patchKeys = @($config.patches.PSObject.Properties.Name)
-    }
-
-    foreach ($patchKey in $patchKeys) {
-        $patch = if ($config.patches -is [hashtable]) {
-            $config.patches[$patchKey]
-        } else {
-            $config.patches.$patchKey
-        }
+    foreach ($patchKey in Get-ConfigKeys -Config $config.patches) {
+        $patch = Get-PatchConfig -Config $config -PatchKey $patchKey
         if (!$patch.file) { continue }
+
         $relPath = $patch.file
         $fullPath = "$SRC_DIR\$relPath"
         $bakPath = "$fullPath.bak"
@@ -3423,6 +3479,10 @@ function Restore-OriginalFiles {
 # ==================== 清理和启动功能 ====================
 
 function Show-CleanMenu {
+    <#
+    .SYNOPSIS
+        显示清理菜单
+    #>
     Write-Header
     Write-ColorOutput Magenta "  清理工具"
     Write-Output ""
@@ -3431,36 +3491,21 @@ function Show-CleanMenu {
     $bakCount = 0
     $config = Get-I18NConfig
     if ($config) {
-        # 兼容 hashtable 和 PSObject
-        $patchKeys = @()
-        if ($config.patches -is [hashtable]) {
-            $patchKeys = @($config.patches.Keys)
-        } else {
-            $patchKeys = @($config.patches.PSObject.Properties.Name)
-        }
-
-        foreach ($patchKey in $patchKeys) {
-            $patch = if ($config.patches -is [hashtable]) {
-                $config.patches[$patchKey]
-            } else {
-                $config.patches.$patchKey
-            }
+        foreach ($patchKey in Get-ConfigKeys -Config $config.patches) {
+            $patch = Get-PatchConfig -Config $config -PatchKey $patchKey
             if (!$patch.file) { continue }
-            $fullPath = "$SRC_DIR\$($patch.file)"
-            $bakPath = "$fullPath.bak"
+            $bakPath = "$SRC_DIR\$($patch.file).bak"
             if (Test-Path $bakPath) { $bakCount++ }
         }
     }
 
-    $backupCount = 0
-    if (Test-Path $BACKUP_DIR) {
-        $backupCount = (Get-ChildItem $BACKUP_DIR -Directory -ErrorAction SilentlyContinue | Measure-Object).Count
-    }
+    $backupCount = if (Test-Path $BACKUP_DIR) {
+        (Get-ChildItem $BACKUP_DIR -Directory -ErrorAction SilentlyContinue | Measure-Object).Count
+    } else { 0 }
 
-    $distSize = 0
-    if (Test-Path "$PACKAGE_DIR\dist") {
-        $distSize = (Get-ChildItem "$PACKAGE_DIR\dist" -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1MB
-    }
+    $distSize = if (Test-Path "$PACKAGE_DIR\dist") {
+        (Get-ChildItem "$PACKAGE_DIR\dist" -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1MB
+    } else { 0 }
 
     Write-ColorOutput DarkGray "  当前状态:"
     Write-Output "    .bak 文件: $bakCount 个"
@@ -3488,131 +3533,95 @@ function Show-CleanMenu {
 }
 
 function Invoke-Clean {
+    <#
+    .SYNOPSIS
+        执行清理操作
+    .PARAMETER Mode
+        清理模式：1=.bak, 2=备份, 3=编译产物, 4=源码, A=全部
+    #>
     param([string]$Mode)
 
-    switch ($Mode) {
-        "1" {
-            # 清理 .bak 文件
-            Write-ColorOutput Yellow "正在清理 .bak 文件..."
-            $config = Get-I18NConfig
-            $count = 0
-            if ($config) {
-                # 兼容 hashtable 和 PSObject
-                $patchKeys = @()
-                if ($config.patches -is [hashtable]) {
-                    $patchKeys = @($config.patches.Keys)
-                } else {
-                    $patchKeys = @($config.patches.PSObject.Properties.Name)
+    # 清理 .bak 文件的子函数
+    function Clear-BackupFiles {
+        Write-ColorOutput Yellow "正在清理 .bak 文件..."
+        $config = Get-I18NConfig
+        $count = 0
+        if ($config) {
+            foreach ($patchKey in Get-ConfigKeys -Config $config.patches) {
+                $patch = Get-PatchConfig -Config $config -PatchKey $patchKey
+                if (!$patch.file) { continue }
+                $bakPath = "$SRC_DIR\$($patch.file).bak"
+                if (Test-Path $bakPath) {
+                    Remove-Item $bakPath -Force
+                    $count++
                 }
+            }
+        }
+        Write-ColorOutput Green "已删除 $count 个 .bak 文件"
+    }
 
-                foreach ($patchKey in $patchKeys) {
-                    $patch = if ($config.patches -is [hashtable]) {
-                        $config.patches[$patchKey]
-                    } else {
-                        $config.patches.$patchKey
-                    }
-                    if (!$patch.file) { continue }
-                    $fullPath = "$SRC_DIR\$($patch.file)"
-                    $bakPath = "$fullPath.bak"
-                    if (Test-Path $bakPath) {
-                        Remove-Item $bakPath -Force
-                        $count++
-                    }
-                }
-            }
-            Write-ColorOutput Green "已删除 $count 个 .bak 文件"
+    # 清理旧备份的子函数
+    function Clear-OldBackups {
+        Write-ColorOutput Yellow "正在清理旧备份..."
+        if (!(Test-Path $BACKUP_DIR)) {
+            Write-ColorOutput Cyan "备份目录不存在"
+            return
         }
-        "2" {
-            # 清理旧备份
-            Write-ColorOutput Yellow "正在清理旧备份..."
-            if (!(Test-Path $BACKUP_DIR)) {
-                Write-ColorOutput Cyan "备份目录不存在"
-                return
-            }
-            $backups = Get-ChildItem $BACKUP_DIR -Directory -ErrorAction SilentlyContinue
-            $count = 0
-            foreach ($backup in $backups) {
-                Remove-Item $backup.FullName -Recurse -Force
-                $count++
-            }
-            Write-ColorOutput Green "已删除 $count 个备份文件夹"
+        $count = 0
+        Get-ChildItem $BACKUP_DIR -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            Remove-Item $_.FullName -Recurse -Force
+            $count++
         }
-        "3" {
-            # 清理编译产物
-            Write-ColorOutput Yellow "正在清理编译产物..."
-            $distPath = "$PACKAGE_DIR\dist"
-            if (Test-Path $distPath) {
-                Remove-Item $distPath -Recurse -Force
-                Write-ColorOutput Green "已删除 dist 目录"
+        Write-ColorOutput Green "已删除 $count 个备份文件夹"
+    }
+
+    # 清理编译产物的子函数
+    function Clear-BuildArtifacts {
+        Write-ColorOutput Yellow "正在清理编译产物..."
+        $distPath = "$PACKAGE_DIR\dist"
+        if (Test-Path $distPath) {
+            Remove-Item $distPath -Recurse -Force
+            Write-ColorOutput Green "已删除 dist 目录"
+        } else {
+            Write-ColorOutput Cyan "dist 目录不存在"
+        }
+        $cachePath = "$PACKAGE_DIR\node_modules\.cache"
+        if (Test-Path $cachePath) {
+            Remove-Item $cachePath -Recurse -Force
+            Write-ColorOutput Green "已删除 bun 缓存"
+        }
+    }
+
+    # 清理源码的子函数
+    function Clear-Source {
+        Write-ColorOutput Red "警告：这将删除整个源码目录！"
+        $confirm = Read-Host "确定继续？(yes/NO)"
+        if ($confirm -eq "yes" -or $confirm -eq "YES") {
+            Write-ColorOutput Yellow "正在删除源码..."
+            if (Test-Path $SRC_DIR) {
+                Remove-Item $SRC_DIR -Recurse -Force
+                Write-ColorOutput Green "源码已删除，可运行 [1] 拉取代码 重新获取"
             } else {
-                Write-ColorOutput Cyan "dist 目录不存在"
+                Write-ColorOutput Cyan "源码目录不存在"
             }
-            $nodeModulesPath = "$PACKAGE_DIR\node_modules\.cache"
-            if (Test-Path $nodeModulesPath) {
-                Remove-Item $nodeModulesPath -Recurse -Force
-                Write-ColorOutput Green "已删除 bun 缓存"
-            }
+        } else {
+            Write-ColorOutput DarkGray "已取消"
         }
-        "4" {
-            # 清理源码
-            Write-ColorOutput Red "警告：这将删除整个源码目录！"
-            $confirm = Read-Host "确定继续？(yes/NO)"
-            if ($confirm -eq "yes" -or $confirm -eq "YES") {
-                Write-ColorOutput Yellow "正在删除源码..."
-                if (Test-Path $SRC_DIR) {
-                    Remove-Item $SRC_DIR -Recurse -Force
-                    Write-ColorOutput Green "源码已删除，可运行 [1] 拉取代码 重新获取"
-                } else {
-                    Write-ColorOutput Cyan "源码目录不存在"
-                }
-            } else {
-                Write-ColorOutput DarkGray "已取消"
-            }
-        }
+    }
+
+    switch ($Mode) {
+        "1" { Clear-BackupFiles }
+        "2" { Clear-OldBackups }
+        "3" { Clear-BuildArtifacts }
+        "4" { Clear-Source }
         "A" {
-            # 全部清理
             Write-ColorOutput Red "警告：这将清理所有临时文件！"
             $confirm = Read-Host "确定继续？(yes/NO)"
             if ($confirm -eq "yes" -or $confirm -eq "YES") {
                 Write-Output ""
-
-                # 清理 .bak
-                Write-ColorOutput Yellow "清理 .bak 文件..."
-                $config = Get-I18NConfig
-                if ($config) {
-                    # 兼容 hashtable 和 PSObject
-                    $patchKeys = @()
-                    if ($config.patches -is [hashtable]) {
-                        $patchKeys = @($config.patches.Keys)
-                    } else {
-                        $patchKeys = @($config.patches.PSObject.Properties.Name)
-                    }
-
-                    foreach ($patchKey in $patchKeys) {
-                        $patch = if ($config.patches -is [hashtable]) {
-                            $config.patches[$patchKey]
-                        } else {
-                            $config.patches.$patchKey
-                        }
-                        if (!$patch.file) { continue }
-                        $bakPath = "$SRC_DIR\$($patch.file).bak"
-                        if (Test-Path $bakPath) { Remove-Item $bakPath -Force }
-                    }
-                }
-
-                # 清理旧备份
-                Write-ColorOutput Yellow "清理旧备份..."
-                if (Test-Path $BACKUP_DIR) {
-                    Get-ChildItem $BACKUP_DIR -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-                        Remove-Item $_.FullName -Recurse -Force
-                    }
-                }
-
-                # 清理编译产物
-                Write-ColorOutput Yellow "清理编译产物..."
-                if (Test-Path "$PACKAGE_DIR\dist") { Remove-Item "$PACKAGE_DIR\dist" -Recurse -Force }
-                if (Test-Path "$PACKAGE_DIR\node_modules\.cache") { Remove-Item "$PACKAGE_DIR\node_modules\.cache" -Recurse -Force }
-
+                Clear-BackupFiles
+                Clear-OldBackups
+                Clear-BuildArtifacts
                 Write-ColorOutput Green "全部清理完成！"
             } else {
                 Write-ColorOutput DarkGray "已取消"
@@ -3860,6 +3869,10 @@ function Install-Global {
 }
 
 function Show-I18NConfig {
+    <#
+    .SYNOPSIS
+        显示汉化配置信息
+    #>
     Write-Header
     Show-Separator
     Write-Output "   汉化配置信息"
@@ -3872,7 +3885,6 @@ function Show-I18NConfig {
         return
     }
 
-    # 确定配置类型
     $configType = if ($config.patches -is [hashtable]) { "模块化" } else { "单文件" }
     $configPath = if ($config.patches -is [hashtable]) { $I18N_DIR } else { $I18N_CONFIG_OLD }
 
@@ -3887,45 +3899,20 @@ function Show-I18NConfig {
     $patchIndex = 1
     $totalReplacements = 0
 
-    # 兼容 hashtable 和 PSObject
-    if ($config.patches -is [hashtable]) {
-        foreach ($kvp in $config.patches.GetEnumerator()) {
-            $patchName = $kvp.Key
-            $patch = $kvp.Value
-            $replacementsCount = 0
-            if ($patch.replacements) {
-                if ($patch.replacements -is [System.Management.Automation.PSCustomObject]) {
-                    $replacementsCount = ($patch.replacements.PSObject.Properties | Measure-Object).Count
-                } elseif ($patch.replacements -is [hashtable]) {
-                    $replacementsCount = $patch.replacements.Count
-                }
-            }
-            $totalReplacements += $replacementsCount
+    foreach ($patchKey in Get-ConfigKeys -Config $config.patches) {
+        $patch = Get-PatchConfig -Config $config -PatchKey $patchKey
+        $replacementsCount = Get-ReplacementsCount -Replacements $patch.replacements
+        $totalReplacements += $replacementsCount
 
-            Write-Output "  [$patchIndex] $patchName"
-            Write-Output "      文件: $($patch.file)"
-            Write-Output "      描述: $($patch.description)"
-            Write-Output "      替换数: $replacementsCount 项"
-            Write-Output ""
-            $patchIndex++
-        }
-    } else {
-        $config.patches.PSObject.Properties | ForEach-Object {
-            $patchName = $_.Name
-            $patch = $_.Value
-            $replacementsCount = ($patch.replacements.PSObject.Properties | Measure-Object).Count
-            $totalReplacements += $replacementsCount
-
-            Write-Output "  [$patchIndex] $patchName"
-            Write-Output "      文件: $($patch.file)"
-            Write-Output "      描述: $($patch.description)"
-            Write-Output "      替换数: $replacementsCount 项"
-            Write-Output ""
-            $patchIndex++
-        }
+        Write-Output "  [$patchIndex] $patchKey"
+        Write-Output "      文件: $($patch.file)"
+        Write-Output "      描述: $($patch.description)"
+        Write-Output "      替换数: $replacementsCount 项"
+        Write-Output ""
+        $patchIndex++
     }
 
-    $moduleCount = if ($config.patches -is [hashtable]) { $config.patches.Count } else { $config.patches.PSObject.Properties.Count }
+    $moduleCount = (Get-ConfigKeys -Config $config.patches).Count
     Write-ColorOutput Green "总计: $moduleCount 个模块, $totalReplacements 项替换"
     Write-Output ""
     Write-ColorOutput Yellow "编辑配置文件即可添加/修改汉化内容"

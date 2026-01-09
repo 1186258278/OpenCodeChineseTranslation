@@ -2,7 +2,7 @@
   "file": "src/cli/cmd/tui/ui/dialog-help.tsx",
   "description": "帮助对话框",
   "replacements": {
-    "Help": "帮助",
+    "Help\n": "帮助\n",
     "Press {keybind.print(\"command_list\")} to see all available actions and commands in any context.": "按 {keybind.print(\"command_list\")} 查看所有可用的操作和命令。",
     "<text fg={theme.selectedListItemText}>ok</text>": "<text fg={theme.selectedListItemText}>确定</text>"
   }
