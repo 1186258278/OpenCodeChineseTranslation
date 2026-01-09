@@ -382,7 +382,42 @@ function Show-VersionInfo {
 
     if ($info.NeedsUpdate) {
         Write-ColorOutput Yellow "   √ 有新版本可用"
-        Write-ColorOutput Cyan "   建议：运行 [1] 拉取最新代码"
+        Write-Output ""
+
+        # 询问是否立即更新
+        $updateChoice = Read-Host "   是否立即更新？"
+        if ($updateChoice -eq "y" -or $updateChoice -eq "Y" -or $updateChoice -eq "是") {
+            Write-Output ""
+            Write-ColorOutput Yellow "   正在更新..."
+
+            Push-Location $SRC_DIR
+
+            # 清除 assume-unchanged 标记
+            $beforePull = git ls-files -v | Where-Object { $_ -match "^h" }
+            if ($beforePull) {
+                $markedFiles = @($beforePull)
+                Write-ColorOutput DarkGray "   临时解除 $($markedFiles.Count) 个文件的忽略标记..."
+                foreach ($file in $markedFiles) {
+                    $filePath = $file.Substring(2)
+                    git update-index --no-assume-unchanged $filePath 2>&1 | Out-Null
+                }
+            }
+
+            # 执行拉取
+            $result = git pull 2>&1
+            $success = $LASTEXITCODE -eq 0
+
+            Pop-Location
+
+            if ($success) {
+                Write-ColorOutput Green "   ✓ 更新成功！"
+                Write-Output ""
+                Write-ColorOutput Yellow "   建议：运行 [2] 应用汉化 重新翻译"
+            } else {
+                Write-ColorOutput Red "   ✗ 更新失败"
+                Write-Output "   $result"
+            }
+        }
     } else {
         Write-ColorOutput Green "   ✓ 已是最新版本"
     }
