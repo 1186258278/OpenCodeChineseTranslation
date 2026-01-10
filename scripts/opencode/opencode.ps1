@@ -5044,11 +5044,18 @@ if (!(Test-Path $SRC_DIR) -or !(Test-Path "$SRC_DIR\.git")) {
     $initScript = "$PROJECT_DIR\scripts\opencode\init.ps1"
     if (Test-Path $initScript) {
         & $initScript
-        # 如果初始化失败，退出
-        if (!(Test-Path $SRC_DIR) -or !(Test-Path "$SRC_DIR\.git")) {
-            Write-ColorOutput Red "初始化失败，请检查网络连接或手动运行: .\scripts\opencode\init.ps1"
+        # 检查 init.ps1 的退出码
+        if ($LASTEXITCODE -ne 0) {
+            Write-ColorOutput Red "初始化脚本执行失败，退出码: $LASTEXITCODE"
             exit 1
         }
+        # 如果初始化后目录仍不存在，退出
+        if (!(Test-Path $SRC_DIR)) {
+            Write-ColorOutput Red "源码目录不存在: $SRC_DIR"
+            exit 1
+        }
+        # 源码目录存在但没有 .git，说明是下载的 zip 包，这是有效的
+        Write-ColorOutput Green "✓ 源码已就绪"
     } else {
         Write-ColorOutput Red "未找到 init.ps1，请手动克隆源码:"
         Write-Host "  git clone https://github.com/anomalyco/opencode.git $SRC_DIR" -ForegroundColor DarkGray
