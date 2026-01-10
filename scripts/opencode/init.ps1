@@ -150,34 +150,88 @@ if ($LASTEXITCODE -eq 0) {
 
 # Git 克隆失败，尝试备用方案
 Write-ColorOutput "⚠️  Git 克隆失败" "Yellow"
-Write-Host "   错误: $cloneResult" -ForegroundColor DarkGray
+Write-Host "   错误: $($cloneResult | Select-Object -First 3)" -ForegroundColor DarkGray
 Write-Host ""
 
 Write-ColorOutput "📦 尝试备用方案: 下载源码压缩包..." "Cyan"
 Write-Host ""
 
-# 检测是否有 curl
-$hasCurl = Get-Command curl -ErrorAction SilentlyContinue
+# 多个下载源（GitHub + Gitee 镜像）
+$downloadUrls = @(
+    @{Name="Gitee 镜像"; Url="https://gitee.com/mirrors/opencode/repository/archive/main.zip"},
+    @{Name="GitHub"; Url="https://codeload.github.com/anomalyco/opencode/zip/refs/heads/main"}
+)
 
-if ($hasCurl) {
-    $downloadUrl = "https://codeload.github.com/anomalyco/opencode/zip/refs/heads/main"
-    $zipPath = "$PROJECT_DIR\opencode-main.zip"
+$downloadSuccess = $false
 
-    Write-Host "   下载地址: $downloadUrl" -ForegroundColor DarkGray
-    Write-Host "   保存位置: $zipPath" -ForegroundColor DarkGray
-    Write-Host ""
+foreach ($source in $downloadUrls) {
+    if ($downloadSuccess) { break }
 
-    Write-ColorOutput "⬇️  正在下载..." "Cyan"
-    & curl.exe -L -o $zipPath $downloadUrl
+    $zipPath = "$PROJECT_DIR\opencode-temp.zip"
+    $extractedDir = "$PROJECT_DIR\opencode-main"
 
-    if (Test-Path $zipPath) {
-        Write-ColorOutput "✅ 下载完成" "Green"
-        Write-Host "   正在解压..." -ForegroundColor Cyan
+    # 清理之前的下载
+    Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+    Remove-Item $extractedDir -Recurse -Force -ErrorAction SilentlyContinue
 
-        try {
+    Write-Host "   尝试 $($source.Name)..." -ForegroundColor Cyan
+    Write-Host "   地址: $($source.Url)" -ForegroundColor DarkGray
+
+    try {
+        # 使用 PowerShell 原生下载（支持进度显示和重试）
+        $webClient = New-Object System.Net.WebClient
+        $webClient.Headers.Add("User-Agent", "Mozilla/5.0")
+
+        Register-ObjectEvent -InputObject $webClient -EventName DownloadProgressChanged -SourceIdentifier WebClient.DownloadProgressChanged -Action {
+            $global:progress = $EventArgs.ProgressPercentage
+            if ($global:progress % 10 -eq 0) {
+                Write-Progress -Activity "正在下载..." -Status "$global:progress%" -PercentComplete $global:progress
+            }
+        } | Out-Null
+
+        Write-Host "   开始下载..." -ForegroundColor Gray
+        $webClient.DownloadFileAsync($source.Url, $zipPath)
+
+        # 等待下载完成（最多 5 分钟）
+        $timeout = 300
+        $elapsed = 0
+        while (!$webClient.IsBusy -and $elapsed -lt $timeout) {
+            Start-Sleep -Milliseconds 100
+            $elapsed += 0.1
+        }
+
+        while ($webClient.IsBusy -and $elapsed -lt $timeout) {
+            Start-Sleep -Milliseconds 500
+            $elapsed += 0.5
+        }
+
+        Write-Progress -Activity "下载完成" -Completed
+
+        # 清理事件订阅
+        Unregister-Event -SourceIdentifier WebClient.DownloadProgressChanged -ErrorAction SilentlyContinue
+        $webClient.Dispose()
+
+        if (Test-Path $zipPath) {
+            $fileSize = (Get-Item $zipPath).Length
+            if ($fileSize -lt 1MB) {
+                Write-Host "   下载文件太小 ($([math]::Round($fileSize/1KB, 2)) KB)，可能是错误页面" -ForegroundColor Yellow
+                Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+                continue
+            }
+
+            Write-ColorOutput "✅ 下载完成 ($([math]::Round($fileSize/1MB, 2)) MB)" "Green"
+            Write-Host "   正在解压..." -ForegroundColor Cyan
+
             # 使用 PowerShell 解压
             Expand-Archive -Path $zipPath -DestinationPath $PROJECT_DIR -Force
-            $extractedDir = "$PROJECT_DIR\opencode-main"
+
+            # 查找解压后的目录（Gitee 和 GitHub 的目录名不同）
+            $extractedDirs = Get-ChildItem -Path $PROJECT_DIR -Directory | Where-Object { $_.Name -like "opencode*" }
+            if ($extractedDirs) {
+                $extractedDir = $extractedDirs[0].FullName
+            } else {
+                $extractedDir = "$PROJECT_DIR\opencode-main"
+            }
 
             if (Test-Path $extractedDir) {
                 # 移动文件到目标目录
@@ -187,18 +241,24 @@ if ($hasCurl) {
                 Move-Item $extractedDir $SRC_DIR
 
                 # 清理压缩包
-                Remove-Item $zipPath -Force
+                Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
 
                 Write-ColorOutput "✅ 初始化完成！" "Green"
                 Write-Host ""
                 Write-ColorOutput "下一步:" "Cyan"
                 Write-Host "   运行 .\scripts\opencode.ps1 开始汉化" -ForegroundColor White
                 Write-Host ""
+                $downloadSuccess = $true
                 exit 0
             }
-        } catch {
-            Write-ColorOutput "❌ 解压失败: $_" "Red"
+        } else {
+            Write-Host "   下载失败" -ForegroundColor Yellow
         }
+    } catch {
+        Write-Host "   下载异常: $($_.Exception.Message)" -ForegroundColor Yellow
+        # 清理
+        Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+        Remove-Item $extractedDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
