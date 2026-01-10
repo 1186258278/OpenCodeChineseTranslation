@@ -425,23 +425,51 @@ install_coding_helper() {
         return 1
     fi
 
-    if has_cmd chelper; then
+    # 将 npm bin 目录加到 PATH
+    local npm_bin="$(npm bin -g 2>/dev/null)"
+    if [ -n "$npm_bin" ]; then
+        export PATH="$npm_bin:$PATH"
+    fi
+
+    if has_cmd chelper || has_cmd coding-helper; then
         print_color "$YELLOW" "  ⊙ coding-helper 已安装"
         record_skipped "coding-helper"
         return 0
     fi
 
     print_color "$DARK_GRAY" "  使用国内镜像安装..."
+    local installed=false
+
     if npm install -g @z_ai/coding-helper --registry="$NPM_REGISTRY" 2>/dev/null; then
-        print_color "$GREEN" "  ✓ coding-helper 安装成功"
-        record_success "coding-helper"
-        return 0
+        installed=true
     fi
 
-    if npm install -g @z_ai/coding-helper 2>/dev/null; then
-        print_color "$GREEN" "  ✓ coding-helper 安装成功"
-        record_success "coding-helper"
-        return 0
+    if ! $installed; then
+        print_color "$YELLOW" "  尝试官方源..."
+        if npm install -g @z_ai/coding-helper 2>/dev/null; then
+            installed=true
+        fi
+    fi
+
+    if $installed; then
+        # 重新加载 npm bin 目录
+        npm_bin="$(npm bin -g 2>/dev/null)"
+        if [ -n "$npm_bin" ]; then
+            export PATH="$npm_bin:$PATH"
+        fi
+
+        # 验证命令是否可用
+        if has_cmd chelper || has_cmd coding-helper; then
+            print_color "$GREEN" "  ✓ coding-helper 安装成功"
+            record_success "coding-helper"
+
+            # 创建软链接到 /usr/local/bin (如果需要)
+            if [ -n "$npm_bin" ] && [ -f "$npm_bin/chelper" ]; then
+                $SUDO_CMD ln -sf "$npm_bin/chelper" /usr/local/bin/chelper 2>/dev/null
+                $SUDO_CMD ln -sf "$npm_bin/coding-helper" /usr/local/bin/coding-helper 2>/dev/null
+            fi
+            return 0
+        fi
     fi
 
     print_color "$RED" "  ✗ coding-helper 安装失败"
