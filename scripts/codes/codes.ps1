@@ -1,5 +1,5 @@
 # ========================================
-# Codes - 开发环境管理工具 v1.0
+# Codes - 开发环境管理工具 v1.1
 # 全局命令: codes
 # 平台: Windows PowerShell
 # 功能: 环境诊断 / 组件管理 / 快捷启动
@@ -13,9 +13,12 @@ param(
     [string[]]$Args
 )
 
-$VERSION = "1.0.0"
+$VERSION = "1.1.0"
 $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
-$INIT_SCRIPT = Join-Path $SCRIPT_DIR "init-dev-env.ps1"
+
+# 国内镜像
+$NPM_REGISTRY = "https://registry.npmmirror.com"
+$NVM_INSTALL_SCRIPT = "https://ghp.ci/https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh"
 
 # ==================== 工具函数 ====================
 function Write-ColorOutput {
@@ -56,15 +59,285 @@ function Get-InstalledVersion {
     return $null
 }
 
-# 加载 init 脚本函数
-function Load-InitFunctions {
-    if (Test-Path $INIT_SCRIPT) {
-        . $INIT_SCRIPT
+# 加载 nvm 环境
+function Initialize-Nvm {
+    if (Test-Path "$env:USERPROFILE\.nvm") {
+        $env:NVM_DIR = "$env:USERPROFILE\.nvm"
+        $nvmSh = "$env:NVM_DIR\nvm.sh"
+        if (Test-Path $nvmSh) {
+            # Windows 使用 nvm-windows，直接加载
+        }
+        # 查找最新 Node.js 版本
+        $nodeVersions = "$env:NVM_DIR\versions\node"
+        if (Test-Path $nodeVersions) {
+            $latestNode = Get-ChildItem $nodeVersions | Sort-Object Name -Descending | Select-Object -First 1
+            if ($latestNode) {
+                $nodeBin = "$($latestNode.FullName)"
+                if ($env:PATH -notcontains [regex]::Escape($nodeBin)) {
+                    $env:PATH = "$nodeBin;$env:PATH"
+                }
+            }
+        }
         return $true
-    } else {
-        Write-ColorOutput "错误: 找不到 init-dev-env.ps1" "Red"
+    }
+    return $false
+}
+
+# 加载 bun 环境
+function Initialize-Bun {
+    $bunBin = "$env:USERPROFILE\.bun\bin"
+    if (Test-Path $bunBin) {
+        $env:BUN_INSTALL = "$env:USERPROFILE\.bun"
+        if ($env:PATH -notcontains [regex]::Escape($bunBin)) {
+            $env:PATH = "$bunBin;$env:PATH"
+        }
+        return $true
+    }
+    return $false
+}
+
+# ==================== 组件列表 ====================
+$Script:COMPONENTS = @(
+    @{ Id="1"; Name="Node.js"; Function="Install-NodeJS"; Check="node" }
+    @{ Id="2"; Name="Bun"; Function="Install-Bun"; Check="bun" }
+    @{ Id="3"; Name="Git"; Function="Install-Git"; Check="git" }
+    @{ Id="4"; Name="Python"; Function="Install-Python"; Check="python" }
+    @{ Id="5"; Name="nvm"; Function="Install-Nvm"; Check="nvm" }
+    @{ Id="6"; Name="coding-helper"; Function="Install-CodingHelper"; Check="chelper" }
+)
+
+# 解析组件编号
+function Parse-Component {
+    param([string]$Id)
+    $comp = $Script:COMPONENTS | Where-Object { $_.Id -eq $Id }
+    if ($comp) {
+        return $comp
+    }
+    return $null
+}
+
+# ==================== 安装函数 ====================
+
+# 安装 nvm (Windows 使用 nvm-windows)
+function Install-Nvm {
+    Write-ColorOutput "[5/5] 安装 nvm..." "Cyan"
+
+    # 检查是否已安装
+    if (Test-Command "nvm") {
+        Write-ColorOutput "  ⊙ nvm 已安装" "Yellow"
+        return $true
+    }
+
+    Write-ColorOutput "  在 Windows 上推荐使用 nvm-windows" "DarkGray"
+    Write-ColorOutput "  访问: https://github.com/coreybutler/nvm-windows/releases" "Cyan"
+    Write-Host ""
+
+    # 尝试使用 winget 安装
+    if (Test-Command "winget") {
+        Write-ColorOutput "  使用 winget 安装..." "DarkGray"
+        winget install --id CoreyButler.NVMforWindows -e --accept-source-agreements --accept-package-agreements 2>$null | Out-Null
+
+        if (Test-Command "nvm") {
+            Write-ColorOutput "  ✓ nvm 安装成功" "Green"
+            return $true
+        }
+    }
+
+    Write-ColorOutput "  ⊙ nvm 安装跳过（请手动安装）" "Yellow"
+    return $false
+}
+
+# 安装 Node.js
+function Install-NodeJS {
+    Write-ColorOutput "[1/5] 安装 Node.js..." "Cyan"
+
+    if (Test-Command "node") {
+        $version = Get-InstalledVersion "node"
+        Write-ColorOutput "  ⊙ Node.js 已安装: $version" "Yellow"
+        return $true
+    }
+
+    # 尝试使用 nvm 安装
+    if (Test-Command "nvm") {
+        Write-ColorOutput "  使用 nvm 安装 LTS..." "DarkGray"
+        nvm install lts 2>$null | Out-Null
+        nvm use lts 2>$null | Out-Null
+
+        if (Test-Command "node") {
+            $version = node -v
+            Write-ColorOutput "  ✓ Node.js 安装成功: $version" "Green"
+
+            # 配置 npm 镜像
+            npm config set registry $NPM_REGISTRY 2>$null | Out-Null
+            Write-ColorOutput "  ✓ npm 已配置国内镜像" "DarkGray"
+            return $true
+        }
+    }
+
+    # 尝试使用 winget
+    if (Test-Command "winget") {
+        Write-ColorOutput "  使用 winget 安装..." "DarkGray"
+        winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements 2>$null | Out-Null
+
+        # 刷新环境变量
+        $env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+        if (Test-Command "node") {
+            $version = node -v
+            Write-ColorOutput "  ✓ Node.js 安装成功: $version" "Green"
+            npm config set registry $NPM_REGISTRY 2>$null | Out-Null
+            return $true
+        }
+    }
+
+    Write-ColorOutput "  ✗ Node.js 安装失败" "Red"
+    return $false
+}
+
+# 安装 Bun
+function Install-Bun {
+    Write-ColorOutput "[2/5] 安装 Bun..." "Cyan"
+
+    if (Test-Command "bun") {
+        $version = Get-InstalledVersion "bun"
+        Write-ColorOutput "  ⊙ Bun 已安装: $version" "Yellow"
+        return $true
+    }
+
+    Write-ColorOutput "  使用官方安装脚本..." "DarkGray"
+
+    # 尝试使用 PowerShell 安装脚本
+    $installScript = "irm bun.sh/install.ps1|iex"
+    try {
+        Invoke-Expression -Command $installScript -ErrorAction Stop 2>$null
+
+        # 加载 bun 环境
+        Initialize-Bun
+
+        if (Test-Command "bun") {
+            $version = bun --version
+            Write-ColorOutput "  ✓ Bun 安装成功: $version" "Green"
+            return $true
+        }
+    } catch {
+        # 忽略错误
+    }
+
+    # 尝试使用 winget
+    if (Test-Command "winget") {
+        Write-ColorOutput "  使用 winget 安装..." "DarkGray"
+        winget install --id Oven-sh.Bun -e --accept-source-agreements --accept-package-agreements 2>$null | Out-Null
+
+        # 刷新环境变量
+        $env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+        if (Test-Command "bun") {
+            $version = bun --version
+            Write-ColorOutput "  ✓ Bun 安装成功: $version" "Green"
+            return $true
+        }
+    }
+
+    Write-ColorOutput "  ⊙ Bun 安装跳过（网络问题）" "Yellow"
+    return $false
+}
+
+# 安装 Git
+function Install-Git {
+    Write-ColorOutput "[3/5] 安装 Git..." "Cyan"
+
+    if (Test-Command "git") {
+        $version = Get-InstalledVersion "git"
+        Write-ColorOutput "  ⊙ Git 已安装: $version" "Yellow"
+        return $true
+    }
+
+    # 尝试使用 winget
+    if (Test-Command "winget") {
+        Write-ColorOutput "  使用 winget 安装..." "DarkGray"
+        winget install --id Git.Git -e --accept-source-agreements --accept-package-agreements 2>$null | Out-Null
+
+        # 刷新环境变量
+        $env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+        if (Test-Command "git") {
+            Write-ColorOutput "  ✓ Git 安装成功" "Green"
+            return $true
+        }
+    }
+
+    Write-ColorOutput "  ✗ Git 安装失败" "Red"
+    return $false
+}
+
+# 安装 Python
+function Install-Python {
+    Write-ColorOutput "[4/5] 安装 Python..." "Cyan"
+
+    if (Test-Command "python") {
+        $version = Get-InstalledVersion "python"
+        Write-ColorOutput "  ⊙ Python 已安装: $version" "Yellow"
+        return $true
+    }
+
+    # 尝试使用 winget
+    if (Test-Command "winget") {
+        Write-ColorOutput "  使用 winget 安装..." "DarkGray"
+        winget install --id Python.Python.3.12 -e --accept-source-agreements --accept-package-agreements 2>$null | Out-Null
+
+        # 刷新环境变量
+        $env:PATH = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+        if (Test-Command "python") {
+            Write-ColorOutput "  ✓ Python 安装成功" "Green"
+            return $true
+        }
+    }
+
+    Write-ColorOutput "  ⊙ Python 安装跳过" "Yellow"
+    return $false
+}
+
+# 安装 coding-helper
+function Install-CodingHelper {
+    Write-ColorOutput "安装 @z_ai/coding-helper..." "Cyan"
+
+    # 确保 npm 可用
+    if (-not (Test-Command "npm")) {
+        Write-ColorOutput "  npm 未找到，尝试先安装 Node.js..." "Yellow"
+        Install-NodeJS
+    }
+
+    if (-not (Test-Command "npm")) {
+        Write-ColorOutput "  ✗ 需要先安装 npm" "Red"
         return $false
     }
+
+    # 检查是否已安装
+    if (Test-Command "chelper" -or (Test-Command "coding-helper")) {
+        Write-ColorOutput "  ⊙ coding-helper 已安装" "Yellow"
+        return $true
+    }
+
+    Write-ColorOutput "  使用国内镜像安装..." "DarkGray"
+    npm install -g @z_ai/coding-helper --registry=$NPM_REGISTRY 2>$null | Out-Null
+
+    if (Test-Command "chelper" -or (Test-Command "coding-helper")) {
+        Write-ColorOutput "  ✓ coding-helper 安装成功" "Green"
+        return $true
+    }
+
+    # 备用：官方源
+    Write-ColorOutput "  尝试官方源..." "Yellow"
+    npm install -g @z_ai/coding-helper 2>$null | Out-Null
+
+    if (Test-Command "chelper" -or (Test-Command "coding-helper")) {
+        Write-ColorOutput "  ✓ coding-helper 安装成功" "Green"
+        return $true
+    }
+
+    Write-ColorOutput "  ⊙ coding-helper 安装跳过（包不存在或网络问题）" "Yellow"
+    return $false
 }
 
 # ==================== 环境诊断 ====================
@@ -113,6 +386,22 @@ function Command-Doctor {
     Show-Status "coding-helper" "coding-helper" $false
     Write-Host ""
 
+    # 显示环境变量
+    Write-ColorOutput "环境变量:" "Cyan"
+    if ($env:NVM_DIR) {
+        Write-Host "  [✓] " -NoNewline -ForegroundColor Green
+        Write-Host "NVM_DIR=$env:NVM_DIR" -ForegroundColor White
+    } else {
+        Write-Host "  [⊙] NVM_DIR 未设置" -ForegroundColor DarkGray
+    }
+    if ($env:BUN_INSTALL) {
+        Write-Host "  [✓] " -NoNewline -ForegroundColor Green
+        Write-Host "BUN_INSTALL=$env:BUN_INSTALL" -ForegroundColor White
+    } else {
+        Write-Host "  [⊙] BUN_INSTALL 未设置" -ForegroundColor DarkGray
+    }
+    Write-Host ""
+
     # 显示包管理器
     Write-ColorOutput "包管理器:" "Cyan"
     if (Test-Command "winget") { Write-Host "  [✓] winget" -ForegroundColor Green }
@@ -122,31 +411,58 @@ function Command-Doctor {
 
     Write-Separator
     Write-ColorOutput "快捷命令:" "Cyan"
-    Write-Host "  codes install     - 安装缺失的组件" -ForegroundColor DarkGray
-    Write-Host "  codes upgrade     - 升级已安装的组件" -ForegroundColor DarkGray
-    Write-Host "  codes helper      - 启动 coding-helper" -ForegroundColor DarkGray
+    Write-Host "  codes install [编号] - 安装组件（可指定编号）" -ForegroundColor DarkGray
+    Write-Host "  codes upgrade       - 升级已安装的工具" -ForegroundColor DarkGray
+    Write-Host "  codes node <ver>    - 切换 Node.js 版本" -ForegroundColor DarkGray
+    Write-Host "  codes helper        - 启动 coding-helper" -ForegroundColor DarkGray
     Write-Host ""
 }
 
 # ==================== 组件管理 ====================
 function Command-Install {
+    param([string]$TargetNum = $null)
+
     Write-Header
     Write-ColorOutput "       安装组件" "Yellow"
     Write-Separator
     Write-Host ""
 
-    # 加载安装函数
-    if (-not (Load-InitFunctions)) {
-        return
+    # 加载环境
+    Initialize-Nvm | Out-Null
+    Initialize-Bun | Out-Null
+
+    # 指定编号安装
+    if ($TargetNum) {
+        $comp = Parse-Component $TargetNum
+        if ($comp) {
+            Write-ColorOutput "安装 $($comp.Name)..." "Cyan"
+            Write-Host ""
+            & $comp.Function
+            Write-Host ""
+            return
+        } else {
+            Write-ColorOutput "  ✗ 无效编号: $TargetNum" "Red"
+            Write-Host ""
+            Write-ColorOutput "可用编号:" "Cyan"
+            foreach ($c in $Script:COMPONENTS) {
+                Write-Host "  [$($c.Id)] " -NoNewline -ForegroundColor Green
+                Write-Host "$($c.Name)"
+            }
+            Write-Host ""
+            Write-ColorOutput "用法: codes install [编号]" "Yellow"
+            Write-Host "示例: codes install 1  # 安装 Node.js" -ForegroundColor DarkGray
+            Write-Host ""
+            return
+        }
     }
 
     # 检查需要安装的组件
     $needInstall = @()
 
-    if (-not (Test-Command "node")) { $needInstall += "Node.js" }
-    if (-not (Test-Command "bun")) { $needInstall += "Bun" }
-    if (-not (Test-Command "git")) { $needInstall += "Git" }
-    if (-not (Test-Command "python")) { $needInstall += "Python" }
+    if (-not (Test-Command "node")) { $needInstall += "1" }
+    if (-not (Test-Command "bun")) { $needInstall += "2" }
+    if (-not (Test-Command "git")) { $needInstall += "3" }
+    if (-not (Test-Command "python")) { $needInstall += "4" }
 
     if ($needInstall.Count -eq 0) {
         Write-ColorOutput "  ✓ 所有核心组件已安装" "Green"
@@ -160,8 +476,9 @@ function Command-Install {
     }
 
     Write-ColorOutput "  需要安装的组件:" "Yellow"
-    foreach ($item in $needInstall) {
-        Write-Host "    - $item"
+    foreach ($num in $needInstall) {
+        $comp = Parse-Component $num
+        Write-Host "    [$num] $($comp.Name)"
     }
     Write-Host ""
 
@@ -172,11 +489,17 @@ function Command-Install {
 
     Write-Host ""
 
+    Write-ColorOutput "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" "Cyan"
+    Write-ColorOutput "  基础工具" "Cyan"
+    Write-ColorOutput "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" "Cyan"
+    Write-Host ""
+
     # 安装缺失的组件
-    if (-not (Test-Command "node")) { Install-NodeJS; Write-Host "" }
-    if (-not (Test-Command "bun")) { Install-Bun; Write-Host "" }
-    if (-not (Test-Command "git")) { Install-Git; Write-Host "" }
-    if (-not (Test-Command "python")) { Install-Python; Write-Host "" }
+    foreach ($num in $needInstall) {
+        $comp = Parse-Component $num
+        & $comp.Function
+        Write-Host ""
+    }
 
     Write-ColorOutput "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" "Cyan"
     Write-ColorOutput "  AI 工具" "Cyan"
@@ -185,9 +508,6 @@ function Command-Install {
 
     Install-CodingHelper
     Write-Host ""
-
-    # 显示汇总
-    Show-Summary
 }
 
 function Command-Upgrade {
@@ -278,21 +598,26 @@ function Command-Env {
     }
     Write-Host ""
 
+    # 环境变量
+    Write-ColorOutput "环境变量:" "Cyan"
+    $nvmDir = if ($env:NVM_DIR) { $env:NVM_DIR } else { "未设置" }
+    $bunInstall = if ($env:BUN_INSTALL) { $env:BUN_INSTALL } else { "未设置" }
+    Write-Host "  NVM_DIR=$nvmDir" -ForegroundColor DarkGray
+    Write-Host "  BUN_INSTALL=$bunInstall" -ForegroundColor DarkGray
+    Write-Host ""
+
     # npm 配置
     if (Test-Command "npm") {
         Write-ColorOutput "npm 配置:" "Cyan"
         npm config get registry 2>$null | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
     }
     Write-Host ""
-}
 
-function Command-Init {
-    if (Test-Path $INIT_SCRIPT) {
-        & $INIT_SCRIPT
-    } else {
-        Write-ColorOutput "  ✗ 找不到 init-dev-env.ps1" "Red"
-        return 1
-    }
+    # 导出命令
+    Write-ColorOutput "环境变量设置（PowerShell）:" "Yellow"
+    Write-Host '`$env:NVM_DIR = "$env:USERPROFILE\.nvm"' -ForegroundColor DarkGray
+    Write-Host '`$env:BUN_INSTALL = "$env:USERPROFILE\.bun"' -ForegroundColor DarkGray
+    Write-Host ""
 }
 
 # ==================== 主菜单 ====================
@@ -318,9 +643,9 @@ function Show-Menu {
     Write-Host "   │  [1]  环境诊断      - 检查所有工具状态" -ForegroundColor Green
     Write-Host "   │  [2]  安装组件      - 安装缺失的工具" -ForegroundColor Yellow
     Write-Host "   │  [3]  升级组件      - 升级已安装的工具" -ForegroundColor Blue
-    Write-Host "   │  [4]  coding-helper - 启动智谱编码助手" -ForegroundColor Cyan
-    Write-Host "   │  [5]  环境变量      - 显示/导出环境变量" -ForegroundColor Cyan
-    Write-Host "   │  [6]  初始化安装    - 运行完整安装脚本" -ForegroundColor Cyan
+    Write-Host "   │  [4]  Node 管理    - 切换 Node.js 版本" -ForegroundColor Magenta
+    Write-Host "   │  [5]  coding-helper - 启动智谱编码助手" -ForegroundColor Cyan
+    Write-Host "   │  [6]  环境变量      - 显示/导出环境变量" -ForegroundColor Cyan
     Write-Host "   │" -ForegroundColor Cyan
     Write-Host "   │  [0]  退出" -ForegroundColor Red
     Write-Host "   │" -ForegroundColor Cyan
@@ -328,6 +653,7 @@ function Show-Menu {
     Write-Host ""
 
     Write-Host "提示: 也可以直接运行 'codes <命令>'，如: codes doctor" -ForegroundColor DarkGray
+    Write-Host "      'codes install [编号]' 可指定安装组件" -ForegroundColor DarkGray
     Write-Host ""
 }
 
@@ -339,25 +665,105 @@ Codes - 开发环境管理工具 v$VERSION
   codes [命令] [参数]
 
 命令:
-  doctor       环境诊断 - 检查所有工具状态
-  install      安装组件 - 安装缺失的工具
-  upgrade      升级组件 - 升级已安装的工具
-  helper [...] coding-helper - 启动智谱编码助手
-  env          环境变量 - 显示/导出环境变量
-  init         初始化安装 - 运行完整安装脚本
-  menu         显示交互菜单
-  --version    显示版本信息
-  --help       显示此帮助信息
+  doctor           环境诊断 - 检查所有工具状态
+  install [编号]   安装组件 - 安装缺失的工具（可指定编号）
+                   编号: 1=Node.js 2=Bun 3=Git 4=Python 5=nvm 6=coding-helper
+  upgrade          升级组件 - 升级已安装的工具
+  node [ver]       Node 管理 - 切换 Node.js 版本
+                   可用: lts, latest, 或具体版本号 (如 20, 22)
+  helper [...]     coding-helper - 启动智谱编码助手
+  env              环境变量 - 显示/导出环境变量
+  menu             显示交互菜单
+  --version        显示版本信息
+  --help           显示此帮助信息
 
 示例:
   codes doctor              # 诊断环境
-  codes helper auth         # 运行 coding-helper auth
   codes install             # 安装缺失组件
+  codes install 1           # 只安装 Node.js
+  codes node lts            # 切换到 LTS 版本
+  codes node 22             # 切换到 v22
+  codes helper auth         # 运行 coding-helper auth
 
-全局安装:
-  codes --install-self      # 安装 codes 为全局命令
+安装编号:
+  [1] Node.js    [2] Bun    [3] Git    [4] Python
+  [5] nvm        [6] coding-helper
 
 "@
+}
+
+# ==================== Node 管理 ====================
+function Command-Node {
+    param([string]$TargetVersion = $null)
+
+    Initialize-Nvm | Out-Null
+    Initialize-Bun | Out-Null
+
+    if (-not (Test-Command "nvm")) {
+        Write-ColorOutput "  ✗ nvm 未安装" "Red"
+        Write-Host ""
+        Write-ColorOutput "  运行 'codes install 5' 安装 nvm" "Yellow"
+        return $false
+    }
+
+    if (-not $TargetVersion) {
+        # 显示当前版本和可用版本
+        Write-Header
+        Write-ColorOutput "       Node.js 版本管理" "Yellow"
+        Write-Separator
+        Write-Host ""
+
+        if (Test-Command "node") {
+            $current = node -v
+            Write-ColorOutput "  当前版本: $current" "Green"
+        }
+
+        Write-Host ""
+        Write-ColorOutput "  已安装版本:" "Cyan"
+        nvm list 2>$null | ForEach-Object { Write-Host "    $_" }
+        Write-Host ""
+
+        Write-ColorOutput "  常用命令:" "Cyan"
+        Write-Host "    codes node lts     - 安装/切换到 LTS" -ForegroundColor DarkGray
+        Write-Host "    codes node latest  - 安装/切换到最新版" -ForegroundColor DarkGray
+        Write-Host "    codes node 20      - 安装/切换到 v20" -ForegroundColor DarkGray
+        Write-Host "    codes node 22      - 安装/切换到 v22" -ForegroundColor DarkGray
+        Write-Host ""
+        return $true
+    }
+
+    # 处理特殊版本名
+    switch ($TargetVersion) {
+        "lts" {
+            Write-ColorOutput "  切换到 LTS 版本..." "Cyan"
+            nvm install lts 2>$null | Out-Null
+            nvm use lts 2>$null | Out-Null
+        }
+        "latest" {
+            Write-ColorOutput "  切换到最新版本..." "Cyan"
+            nvm install latest 2>$null | Out-Null
+            nvm use latest 2>$null | Out-Null
+        }
+        default {
+            # 确保版本号以 v 开头
+            if (-not $TargetVersion.StartsWith("v")) {
+                $TargetVersion = "v$TargetVersion"
+            }
+            Write-ColorOutput "  切换到 $TargetVersion..." "Cyan"
+            nvm install $TargetVersion 2>$null | Out-Null
+            nvm use $TargetVersion 2>$null | Out-Null
+        }
+    }
+
+    Initialize-Nvm | Out-Null
+
+    if (Test-Command "node") {
+        Write-ColorOutput "  ✓ 当前版本: $(node -v)" "Green"
+        Write-ColorOutput "  ! 请重启终端使更改生效" "Yellow"
+    } else {
+        Write-ColorOutput "  ✗ 切换失败" "Red"
+        return $false
+    }
 }
 
 # ==================== 全局安装 ====================
@@ -406,11 +812,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$binDir\codes.ps1" %*
 # ==================== 主入口 ====================
 switch ($Command) {
     "doctor" { Command-Doctor }
-    "install" { Command-Install }
+    "install" { Command-Install -TargetNum $Args[0] }
     "upgrade" { Command-Upgrade }
+    "node" { Command-Node -TargetVersion $Args[0] }
     "helper" { Command-Helper $Args }
     "env" { Command-Env }
-    "init" { Command-Init }
     "menu" {
         Show-Menu
         $choice = Read-Host "请选择"
@@ -419,9 +825,9 @@ switch ($Command) {
             "1" { Command-Doctor }
             "2" { Command-Install }
             "3" { Command-Upgrade }
-            "4" { Command-Helper }
-            "5" { Command-Env }
-            "6" { Command-Init }
+            "4" { Command-Node }
+            "5" { Command-Helper }
+            "6" { Command-Env }
             "0" {
                 Write-ColorOutput "再见！" "DarkGray"
                 exit
