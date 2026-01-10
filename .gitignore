@@ -13,6 +13,11 @@ opencode.exe
 api_doc_mcp.log
 
 # ====================
+# Worktrees (开发隔离)
+# ====================
+.worktrees/
+
+# ====================
 # Temporary files
 # ====================
 backup/
