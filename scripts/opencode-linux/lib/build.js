@@ -14,6 +14,8 @@ class Build {
   constructor() {
     this.projectDir = Version.getProjectDir();
     this.opencodeDir = path.join(this.projectDir, 'opencode-zh-CN');
+    // OpenCode 实际代码在 packages/opencode/ 子目录
+    this.opcodePackageDir = path.join(this.opencodeDir, 'packages/opencode');
     this.bunPath = path.join(process.env.HOME || '~', '.bun/bin');
   }
 
@@ -135,7 +137,7 @@ Bun 安装失败，请手动安装后重试：
 
     try {
       execSync(`${bunCmd} install`, {
-        cwd: this.opencodeDir,
+        cwd: this.opcodePackageDir,
         stdio: 'inherit',
         env: { ...process.env, PATH: this.bunPath + ':' + process.env.PATH }
       });
@@ -152,10 +154,17 @@ Bun 安装失败，请手动安装后重试：
     // 确保有 Bun
     await this.ensureBun();
 
+    // 清理错误位置的 node_modules
+    const wrongNodeModules = path.join(this.opencodeDir, 'node_modules');
+    if (fs.existsSync(wrongNodeModules)) {
+      console.log('清理错误位置的依赖...');
+      fs.rmSync(wrongNodeModules, { recursive: true, force: true });
+    }
+
     const bunCmd = this.getBunCommand();
 
     // 检查是否需要安装依赖
-    const nodeModules = path.join(this.opencodeDir, 'node_modules');
+    const nodeModules = path.join(this.opcodePackageDir, 'node_modules');
     if (!fs.existsSync(nodeModules)) {
       console.log('首次构建，正在安装依赖...');
       await this.install();
@@ -163,7 +172,7 @@ Bun 安装失败，请手动安装后重试：
 
     try {
       execSync(`${bunCmd} run build`, {
-        cwd: this.opencodeDir,
+        cwd: this.opcodePackageDir,
         stdio: 'inherit',
         env: { ...process.env, PATH: this.bunPath + ':' + process.env.PATH }
       });
@@ -177,13 +186,13 @@ Bun 安装失败，请手动安装后重试：
    * 清理构建产物
    */
   async clean() {
-    const distDir = path.join(this.opencodeDir, 'dist');
+    const distDir = path.join(this.opcodePackageDir, 'dist');
 
     if (fs.existsSync(distDir)) {
       fs.rmSync(distDir, { recursive: true, force: true });
     }
 
-    const exePath = path.join(this.opencodeDir, 'opencode.exe');
+    const exePath = path.join(this.opcodePackageDir, 'opencode.exe');
     if (fs.existsSync(exePath)) {
       fs.unlinkSync(exePath);
     }
