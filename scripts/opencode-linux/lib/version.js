@@ -91,6 +91,7 @@ async function checkUpdateAvailable() {
 
 /**
  * 获取项目根目录
+ * 如果找不到包含 opencode-i18n 的目录，返回当前目录
  */
 function getProjectDir() {
   let dir = process.cwd();
@@ -100,7 +101,8 @@ function getProjectDir() {
     }
     dir = path.dirname(dir);
   }
-  return null;
+  // 未找到项目目录，返回当前目录
+  return process.cwd();
 }
 
 /**
