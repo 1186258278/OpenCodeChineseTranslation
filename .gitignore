@@ -58,6 +58,14 @@ opencode-i18n.json.backup
 # ====================
 # Submodule specific
 # ====================
-# opencode-zh-CN 是上游官方源码，作为子模块引用
-# 所有修改和状态变化应被忽略
+# opencode-zh-CN 是上游官方源码（自动克隆，非 Git 子模块）
+# 首次运行时 scripts/init.ps1 会自动克隆上游代码到此目录
+# 所有本地修改（汉化、编译产物）都应被 Git 忽略
 opencode-zh-CN/
+
+# ====================
+# Auto-downloaded archives
+# ====================
+# init.ps1 备用下载产生的临时压缩包
+opencode-main.zip
+*.zip

@@ -1,5 +1,5 @@
 # ========================================
-# OpenCode 中文汉化版 - 管理工具 v5.3
+# OpenCode 中文汉化版 - 管理工具 v5.4
 # ========================================
 
 # 配置路径 (使用脚本所在目录，自动适配)
@@ -370,6 +370,11 @@ function Show-Menu {
     Write-Host "   [7]" -ForegroundColor Magenta -NoNewline
     Write-Host " 高级菜单    " -ForegroundColor White -NoNewline
     Write-Host "→ 拉取/编译/恢复/清理/启动等专业功能" -ForegroundColor DarkGray -NoNewline
+    Write-Host "│" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Cyan -NoNewline
+    Write-Host "   [R]" -ForegroundColor Magenta -NoNewline
+    Write-Host " 恢复纯净    " -ForegroundColor White -NoNewline
+    Write-Host "→ 撤销汉化，恢复到出厂状态" -ForegroundColor DarkGray -NoNewline
     Write-Host "│" -ForegroundColor Cyan
     Write-Host "   └───────────────────────────────────────────────────────┘" -ForegroundColor Cyan
     Write-Host ""
@@ -4039,6 +4044,170 @@ function Restore-OriginalFiles {
     Read-Host "按回车继续"
 }
 
+function Test-GlobalConflict {
+    <#
+    .SYNOPSIS
+        检测全局 opencode 命令冲突
+    .DESCRIPTION
+        检测用户是否已安装官方 opencode 全局命令
+        如果存在冲突，提供处理选项（跳过/替换/重命名）
+    #>
+    $globalCmd = Get-Command opencode -ErrorAction SilentlyContinue
+    if (!$globalCmd) {
+        return @{
+            HasConflict = $false
+            Path = $null
+            IsOfficial = $false
+        }
+    }
+
+    # 检查是否为官方版本
+    $cmdPath = $globalCmd.Source
+    $isOfficial = $false
+
+    # 检查路径特征判断是否为官方版本
+    if ($cmdPath -match "npm\\global\\node_modules" -or
+        $cmdPath -match "node_modules\\.bin" -or
+        $cmdPath -match "AppData\\Roaming\\npm") {
+        $isOfficial = $true
+    }
+
+    return @{
+        HasConflict = $true
+        Path = $cmdPath
+        IsOfficial = $isOfficial
+    }
+}
+
+function Show-ConflictWarning {
+    <#
+    .SYNOPSIS
+        显示全局命令冲突警告并提供解决方案
+    #>
+    $conflict = Test-GlobalConflict
+
+    if (!$conflict.HasConflict) {
+        return
+    }
+
+    Write-Host ""
+    Write-Host "   ┌─── 全局命令冲突检测 ─────────────────────────────────┐" -ForegroundColor Yellow
+    Write-Host "   │" -ForegroundColor Yellow
+    Write-Host "   │  ⚠️  检测到已安装的全局 opencode 命令！" -ForegroundColor Yellow
+    Write-Host "   │" -ForegroundColor Yellow
+    Write-ColorOutput DarkGray "   │  位置: $($conflict.Path)"
+    Write-Host "   │" -ForegroundColor Yellow
+    if ($conflict.IsOfficial) {
+        Write-Host "   │  类型: 官方版本" -ForegroundColor Yellow
+    } else {
+        Write-Host "   │  类型: 其他版本" -ForegroundColor Yellow
+    }
+    Write-Host "   │" -ForegroundColor Yellow
+    Write-Host "   │  可能导致命令冲突，请选择处理方式：" -ForegroundColor Yellow
+    Write-Host "   │" -ForegroundColor Yellow
+    Write-Host "   │  [1] 跳过 - 不做任何修改" -ForegroundColor Cyan
+    Write-Host "   │  [2] 替换 - 用汉化版替换全局命令" -ForegroundColor Cyan
+    Write-Host "   │  [3] 重命名 - 将现有命令重命名备份" -ForegroundColor Cyan
+    Write-Host "   │" -ForegroundColor Yellow
+    Write-Host "   └───────────────────────────────────────────────────────┘" -ForegroundColor Yellow
+    Write-Host ""
+}
+
+function Restore-CleanMode {
+    <#
+    .SYNOPSIS
+        一键恢复纯净模式
+    .DESCRIPTION
+        恢复源码到纯净状态 + 清理编译产物
+        相当于"恢复出厂设置"
+    #>
+    Write-Header
+    Show-Separator
+    Write-ColorOutput Yellow "       恢复纯净模式"
+    Show-Separator
+    Write-Output ""
+
+    Write-ColorOutput Cyan "此操作将："
+    Write-Output "  1. 恢复源码到纯净状态（撤销所有汉化）"
+    Write-Output "  2. 清理编译产物和缓存文件"
+    Write-Output ""
+
+    Write-ColorOutput Red "警告：所有本地修改将会丢失！"
+    $confirm = Read-Host "确定继续？(yes/NO)"
+    if ($confirm -ne "yes" -and $confirm -ne "YES") {
+        Write-ColorOutput DarkGray "已取消"
+        Start-Sleep -Seconds 1
+        return
+    }
+
+    Write-Output ""
+
+    # 1. 恢复源码
+    Write-ColorOutput Cyan "[1/3] 恢复源码..." -NoNewline
+    if (!(Test-Path $SRC_DIR)) {
+        Write-ColorOutput Red " 源码目录不存在" -ForegroundColor Red
+        return
+    }
+
+    Push-Location $SRC_DIR
+    if (!(Test-Path ".git")) {
+        Write-ColorOutput Red " 不是 git 仓库" -ForegroundColor Red
+        Pop-Location
+        return
+    }
+
+    # 恢复所有修改的文件
+    $null = git checkout -- . 2>&1
+    $null = git clean -fd 2>&1
+    Pop-Location
+    Write-ColorOutput Green " ✓"
+
+    # 2. 清理编译产物
+    Write-ColorOutput Cyan "[2/3] 清理编译产物..." -NoNewline
+    $itemsToRemove = @(
+        "$OUT_DIR\opencode.exe",
+        "$SRC_DIR\node_modules",
+        "$SRC_DIR\packages\opencode\dist"
+    )
+
+    $removedCount = 0
+    foreach ($item in $itemsToRemove) {
+        if (Test-Path $item) {
+            Remove-Item $item -Recurse -Force -ErrorAction SilentlyContinue
+            $removedCount++
+        }
+    }
+    Write-ColorOutput Green " ✓ (清理 $removedCount 项)"
+
+    # 3. 清理备份文件
+    Write-ColorOutput Cyan "[3/3] 清理备份文件..." -NoNewline
+    $config = Get-I18NConfig
+    $cleanedBak = 0
+    if ($config) {
+        foreach ($patchKey in Get-ConfigKeys -Config $config.patches) {
+            $patch = Get-PatchConfig -Config $config -PatchKey $patchKey
+            if (!$patch.file) { continue }
+            $bakPath = "$SRC_DIR\$($patch.file).bak"
+            if (Test-Path $bakPath) {
+                Remove-Item $bakPath -Force -ErrorAction SilentlyContinue
+                $cleanedBak++
+            }
+        }
+    }
+    Write-ColorOutput Green " ✓ (清理 $cleanedBak 个备份)"
+
+    Write-Output ""
+    Write-ColorOutput Green "╔════════════════════════════════════════════════════════════╗"
+    Write-ColorOutput Green "║          恢复纯净模式完成！                               ║"
+    Write-ColorOutput Green "╚════════════════════════════════════════════════════════════╝"
+    Write-Output ""
+
+    Write-ColorOutput Cyan "下一步:"
+    Write-Output "  运行 [1] 一键汉化+部署 重新开始"
+    Write-Output ""
+    Read-Host "按回车键继续"
+}
+
 # ==================== 清理和启动功能 ====================
 
 function Show-CleanMenu {
@@ -4639,6 +4808,32 @@ powershell.exe -ExecutionPolicy Bypass -File `"$PSCommandPath`"
 
 # ==================== 主循环 ====================
 
+# 首次运行检测 - 自动初始化
+if (!(Test-Path $SRC_DIR) -or !(Test-Path "$SRC_DIR\.git")) {
+    Write-Host ""
+    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+    Write-Host "║  首次运行检测                                             ║" -ForegroundColor Cyan
+    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "检测到源码目录未初始化，正在自动设置..." -ForegroundColor Yellow
+    Write-Host ""
+
+    # 调用 init.ps1 自动初始化
+    $initScript = "$PROJECT_DIR\scripts\init.ps1"
+    if (Test-Path $initScript) {
+        & $initScript
+        # 如果初始化失败，退出
+        if (!(Test-Path $SRC_DIR) -or !(Test-Path "$SRC_DIR\.git")) {
+            Write-ColorOutput Red "初始化失败，请检查网络连接或手动运行: .\scripts\init.ps1"
+            exit 1
+        }
+    } else {
+        Write-ColorOutput Red "未找到 init.ps1，请手动克隆源码:"
+        Write-Host "  git clone https://github.com/anomalyco/opencode.git $SRC_DIR" -ForegroundColor DarkGray
+        exit 1
+    }
+}
+
 do {
     Show-Menu
     $choice = Read-Host "请选择"
@@ -4669,6 +4864,8 @@ do {
         "6" { Backup-All }
         "L" { Show-Changelog }
         "l" { Show-Changelog }
+        "R" { Restore-CleanMode }
+        "r" { Restore-CleanMode }
         "7" {
             # 高级菜单
             do {

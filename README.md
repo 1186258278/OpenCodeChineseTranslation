@@ -52,46 +52,48 @@
 
 ### 安装部署
 
-#### 方式一：快速安装
+> **重要**：本项目使用**相对路径**设计，可放置在任意目录运行。首次运行会自动初始化上游源码。
+
+#### 方式一：一键安装（推荐）
 
 ```powershell
-# 1. 克隆仓库
+# 1. 克隆本仓库
 git clone https://github.com/1186258278/OpenCodeChineseTranslation.git
 cd OpenCodeChineseTranslation
 
-# 2. 初始化子模块
-git submodule update --init --recursive
-
-# 3. 运行脚本
+# 2. 首次运行会自动初始化（克隆上游源码）
 .\scripts\opencode.ps1
 ```
 
-#### 方式二：手动部署
+**首次运行自动执行：**
+- 检查 Git 和 Bun 环境
+- 自动克隆上游 OpenCode 源码到 `opencode-zh-CN/`
+- 如果 Git 克隆失败，提供备用下载方案
+
+#### 方式二：手动初始化
 
 ```powershell
-# 1. 克隆主仓库（不含子模块）
-git clone --no-recurse-submodules https://github.com/1186258278/OpenCodeChineseTranslation.git
+# 1. 克隆本仓库（不含源码）
+git clone https://github.com/1186258278/OpenCodeChineseTranslation.git
 cd OpenCodeChineseTranslation
 
-# 2. 手动添加子模块
-git submodule add https://github.com/anomalyco/opencode.git opencode-zh-CN
-
-# 3. 切换到子模块目录并安装依赖
-cd opencode-zh-CN
-bun install
-cd ..
-
-# 4. 应用汉化
-.\scripts\opencode.ps1
-# 选择菜单 [2] 应用汉化
+# 2. 手动初始化上游源码
+.\scripts\init.ps1
+# 或使用 -Force 强制重新初始化
+.\scripts\init.ps1 -Force
 ```
+
+**手动安装适用场景：**
+- Git 克隆失败，使用备用下载方式
+- 需要指定特定分支或版本的源码
+- 网络环境需要特殊配置
 
 #### 方式三：从 GitHub Releases 部署
 
 1. 访问 [Releases 页面](https://github.com/1186258278/OpenCodeChineseTranslation/releases)
 2. 下载最新版本的预编译包
-3. 解压到本地目录
-4. 运行 `opencode.bat` 或 `.\scripts\opencode.ps1`
+3. 解压到任意目录
+4. 运行 `.\scripts\opencode.ps1`
 
 ---
 
@@ -144,6 +146,7 @@ cd ..
 | [5] | 版本检测 | 检查并更新官方版本 |
 | [6] | 备份版本 | 备份当前汉化版本 |
 | [7] | 高级菜单 | 更多高级选项 |
+| [R] | 恢复纯净 | 撤销汉化，恢复到出厂状态 |
 
 #### 高级菜单
 
@@ -183,17 +186,23 @@ cd ..
 ```
 OpenCodeChineseTranslation/
 ├── scripts/                 # 管理脚本目录
-│   └── opencode.ps1         # 主脚本（2300+ 行）
+│   ├── opencode.ps1         # 主脚本（4700+ 行）
+│   └── init.ps1             # 自动初始化脚本
 ├── opencode-i18n/           # 汉化配置目录
 │   ├── config.json          # 主配置文件（版本控制）
-│   ├── dialogs/             # 对话框汉化（21 个模块）
-│   ├── routes/              # 路由汉化（3 个模块）
-│   ├── components/          # 组件汉化（6 个模块）
-│   └── common/              # 通用汉化（6 个模块）
-├── opencode-zh-CN/          # OpenCode 源码（Git 子模块）
+│   ├── dialogs/             # 对话框汉化（21+ 个模块）
+│   ├── routes/              # 路由汉化（3+ 个模块）
+│   ├── components/          # 组件汉化（6+ 个模块）
+│   └── common/              # 通用汉化（6+ 个模块）
+├── opencode-zh-CN/          # OpenCode 源码（自动克隆，Git 忽略）
 ├── dist/                    # 编译输出（Git 忽略）
 └── docs/                    # 项目文档
 ```
+
+**目录说明：**
+- `scripts/` - PowerShell 管理脚本，支持相对路径运行
+- `opencode-i18n/` - 模块化汉化配置，JSON 格式
+- `opencode-zh-CN/` - 上游源码（首次运行自动克隆，.gitignore 忽略）
 
 ---
 
@@ -205,8 +214,9 @@ OpenCodeChineseTranslation/
 | 编译失败 | Bun 未安装或版本过低 | 运行 `bun upgrade` 或重新安装 Bun |
 | 汉化未生效 | 源码被 Git 更新覆盖 | 运行 `[2] 应用汉化` 重新应用 |
 | 网络超时 | 访问 GitHub 速度慢 | 脚本会自动检测并使用本地代理 |
-| 子模块为空 | 未初始化子模块 | 运行 `git submodule update --init --recursive` |
-| 端口被占用 | OpenCode 已在运行 | 关闭已有进程或使用 `[L] 启动 OpenCode` |
+| 源码目录为空 | 首次运行未初始化 | 运行 `.\scripts\init.ps1` 自动克隆 |
+| 全局命令冲突 | 已安装官方 opencode | 脚本会自动检测并提供选项 |
+| 需要恢复纯净 | 汉化出现问题或想重置 | 运行 `[R] 恢复纯净` 一键重置 |
 
 ---
 
@@ -303,6 +313,11 @@ OpenCode 原项目采用 MIT 许可证，版权归 [Anomaly Company](https://ano
 
 | 版本 | 日期 | 更新内容 |
 |------|------|----------|
+| 5.4 | 2026-01-10 | 新用户友好：自动初始化、备用下载、一键恢复纯净模式 |
+| 5.3 | 2026-01-10 | 改进版本检测与自动更新，修复汉化污染问题 |
+| 5.2 | 2026-01-09 | 修复汉化配置破坏代码的问题 |
+| 5.1 | 2026-01-09 | 添加语言包版本适配检测 |
+| 5.0 | 2026-01-08 | 优化文件标记速度和进度提示 |
 | 4.5 | 2026-01-09 | 新增错误消息翻译，修复验证脚本 |
 | 4.3 | 2026-01-08 | 完善菜单结构，添加自动代理检测 |
 | 4.0 | 2026-01-07 | 模块化重构，支持独立模块管理 |
