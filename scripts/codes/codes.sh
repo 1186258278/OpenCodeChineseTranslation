@@ -179,8 +179,13 @@ cmd_doctor() {
     echo ""
 
     print_color "${CYAN}" "AI 工具:"
-    show_status "coding-helper" "chelper" "no"
-    show_status "coding-helper" "coding-helper" "no"
+    # 检查 coding-helper 是否在 npm bin 目录
+    local npm_bin=$(npm config get prefix 2>/dev/null)/bin
+    if has_cmd chelper || has_cmd coding-helper || { [ -n "$npm_bin" ] && [ -f "$npm_bin/coding-helper" ]; }; then
+        echo -e "  ${GREEN}[✓]${NC} coding-helper: ${WHITE}已安装${NC}"
+    else
+        echo -e "  ${DARK_GRAY}[⊙]${NC} coding-helper: ${DARK_GRAY}未安装（可选）${NC}"
+    fi
     echo ""
 
     # 显示环境变量
@@ -391,14 +396,11 @@ install_coding_helper() {
         return 1
     fi
 
-    # 获取 npm 全局 bin 目录
+    # 获取 npm 全局 bin 目录 (npm bin -g 已废弃)
     local npm_bin="$(npm config get prefix 2>/dev/null)/bin"
-    if [ ! -d "$npm_bin" ]; then
-        npm_bin="$(npm bin -g 2>/dev/null)"
-    fi
 
     # 检查是否已安装
-    if [ -n "$npm_bin" ] && [ -x "$npm_bin/coding-helper" ] || [ -x "$npm_bin/chelper" ]; then
+    if [ -n "$npm_bin" ] && { [ -f "$npm_bin/coding-helper" ] || [ -f "$npm_bin/chelper" ]; }; then
         print_color "${YELLOW}" "  ⊙ coding-helper 已安装"
         print_color "${DARK_GRAY}" "  ! 请运行: export PATH=\"$npm_bin:\$PATH\""
         return 0
@@ -409,11 +411,8 @@ install_coding_helper() {
 
     # 重新获取 npm bin 路径
     npm_bin="$(npm config get prefix 2>/dev/null)/bin"
-    if [ ! -d "$npm_bin" ]; then
-        npm_bin="$(npm bin -g 2>/dev/null)"
-    fi
 
-    if [ -n "$npm_bin" ] && [ -x "$npm_bin/coding-helper" ] || [ -x "$npm_bin/chelper" ]; then
+    if [ -n "$npm_bin" ] && { [ -f "$npm_bin/coding-helper" ] || [ -f "$npm_bin/chelper" ]; }; then
         print_color "${GREEN}" "  ✓ coding-helper 安装成功"
         print_color "${YELLOW}" "  ! 请运行: export PATH=\"$npm_bin:\$PATH\""
         return 0
@@ -425,11 +424,8 @@ install_coding_helper() {
 
     # 重新获取 npm bin 路径
     npm_bin="$(npm config get prefix 2>/dev/null)/bin"
-    if [ ! -d "$npm_bin" ]; then
-        npm_bin="$(npm bin -g 2>/dev/null)"
-    fi
 
-    if [ -n "$npm_bin" ] && [ -x "$npm_bin/coding-helper" ] || [ -x "$npm_bin/chelper" ]; then
+    if [ -n "$npm_bin" ] && { [ -f "$npm_bin/coding-helper" ] || [ -f "$npm_bin/chelper" ]; }; then
         print_color "${GREEN}" "  ✓ coding-helper 安装成功"
         print_color "${YELLOW}" "  ! 请运行: export PATH=\"$npm_bin:\$PATH\""
         return 0
@@ -979,8 +975,8 @@ cmd_env() {
         echo "export PATH=\"\$BUN_INSTALL/bin:\$PATH\""
     fi
     if has_cmd npm; then
-        local npm_bin=$(npm bin -g 2>/dev/null)
-        if [ -n "$npm_bin" ]; then
+        local npm_bin=$(npm config get prefix 2>/dev/null)/bin
+        if [ -n "$npm_bin" ] && [ -d "$npm_bin" ]; then
             echo "export PATH=\"$npm_bin:\$PATH\""
         fi
     fi
