@@ -9,6 +9,7 @@
     "placeholder=\"API key\"": "placeholder=\"API密钥\"",
     "(Recommended)": "(推荐)",
     "(Claude Max or API key)": "(Claude Max 或 API密钥)",
+    "(ChatGPT Plus/Pro or API key)": "(ChatGPT Plus/Pro 或 API密钥)",
     "<text fg={theme.textMuted}>Waiting for authorization...</text>": "<text fg={theme.textMuted}>等待授权...</text>",
     "<text fg={theme.error}>Invalid code</text>": "<text fg={theme.error}>无效的授权码</text>",
     "c <span style={{ fg: theme.textMuted }}>copy</span>": "c <span style={{ fg: theme.textMuted }}>复制</span>",

@@ -3431,13 +3431,14 @@ function Invoke-OneClickFull {
     } else {
         Write-Output "  1. 跳过拉取 (已是最新)"
     }
-    Write-Output "  2. 应用所有汉化补丁"
-    Write-Output "  3. 关闭现有进程"
-    Write-Output "  4. 编译程序"
-    Write-Output "  5. 复制文件到输出目录"
-    Write-Output "  6. 替换全局版本 (opencode 命令)"
-    Write-Output "  7. 验证汉化结果"
-    Write-Output "  8. 更新语言包版本 (验证通过时)"
+    Write-Output "  2. 恢复原始文件 (防止旧汉化污染)"
+    Write-Output "  3. 应用所有汉化补丁"
+    Write-Output "  4. 关闭现有进程"
+    Write-Output "  5. 编译程序"
+    Write-Output "  6. 复制文件到输出目录"
+    Write-Output "  7. 替换全局版本 (opencode 命令)"
+    Write-Output "  8. 验证汉化结果"
+    Write-Output "  9. 更新语言包版本 (验证通过时)"
     Write-Output ""
 
     Write-Output ""
@@ -3447,7 +3448,7 @@ function Invoke-OneClickFull {
     $stepNum = 1
     if ($versionInfo.NeedsUpdate) {
         Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        Write-ColorOutput Cyan "步骤 1/8: 拉取最新代码"
+        Write-ColorOutput Cyan "步骤 1/9: 拉取最新代码"
         Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         Write-Output ""
 
@@ -3704,7 +3705,7 @@ function Invoke-OneClickFull {
         }
     } else {
         Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        Write-ColorOutput Green "步骤 1/8: 跳过拉取 (已是最新版本)"
+        Write-ColorOutput Green "步骤 1/9: 跳过拉取 (已是最新版本)"
         Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         Write-Output ""
     }
@@ -3712,7 +3713,20 @@ function Invoke-OneClickFull {
     Write-Output ""
 
     Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    Write-ColorOutput Cyan "步骤 2/8: 应用汉化补丁"
+    Write-ColorOutput Cyan "步骤 2/9: 恢复原始文件"
+    Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    Write-Output ""
+
+    Write-ColorOutput Yellow "正在恢复纯净代码（防止旧汉化污染）..."
+    Push-Location $SRC_DIR
+    $null = git checkout -- packages/opencode/src/cli/cmd/tui/ 2>&1
+    $null = git clean -fd packages/opencode/src/cli/cmd/tui/ 2>&1
+    Pop-Location
+    Write-ColorOutput Green "原始文件已恢复！"
+    Write-Output ""
+
+    Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    Write-ColorOutput Cyan "步骤 3/9: 应用汉化补丁"
     Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     Write-Output ""
 
@@ -3729,7 +3743,7 @@ function Invoke-OneClickFull {
     Write-Output ""
 
     Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    Write-ColorOutput Cyan "步骤 3/8: 关闭现有进程"
+    Write-ColorOutput Cyan "步骤 4/9: 关闭现有进程"
     Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     Write-Output ""
 
@@ -3741,7 +3755,7 @@ function Invoke-OneClickFull {
     Write-Output ""
 
     Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    Write-ColorOutput Cyan "步骤 4/8: 编译程序"
+    Write-ColorOutput Cyan "步骤 5/9: 编译程序"
     Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     Write-Output ""
 
@@ -3771,7 +3785,7 @@ function Invoke-OneClickFull {
     Write-Output ""
 
     Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    Write-ColorOutput Cyan "步骤 5/8: 复制文件到输出目录"
+    Write-ColorOutput Cyan "步骤 6/9: 复制文件到输出目录"
     Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     Write-Output ""
 
@@ -3797,7 +3811,7 @@ function Invoke-OneClickFull {
     Write-Output ""
 
     Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    Write-ColorOutput Cyan "步骤 6/8: 替换全局版本"
+    Write-ColorOutput Cyan "步骤 7/9: 替换全局版本"
     Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     Write-Output ""
 
@@ -3830,7 +3844,7 @@ function Invoke-OneClickFull {
     Write-Output ""
 
     Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    Write-ColorOutput Cyan "步骤 7/8: 验证汉化结果"
+    Write-ColorOutput Cyan "步骤 8/9: 验证汉化结果"
     Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     Write-Output ""
 
@@ -3854,7 +3868,7 @@ function Invoke-OneClickFull {
     # 验证通过后自动更新语言包版本
     if ($validationPassed) {
         Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        Write-ColorOutput Cyan "步骤 8/8: 更新语言包版本"
+        Write-ColorOutput Cyan "步骤 9/9: 更新语言包版本"
         Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         Write-Output ""
         Update-SupportedCommit
