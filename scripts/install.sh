@@ -8,6 +8,7 @@ set -e
 
 REPO="1186258278/OpenCodeChineseTranslation"
 BRANCH="main"
+REPO_GITEE="QtCodeCreators/OpenCodeChineseTranslation"
 LIB_DIR="/usr/local/lib/codes"
 BIN_DIR="/usr/local/bin"
 
@@ -32,9 +33,43 @@ echo ""
 echo "→ 创建安装目录..."
 $SUDO_CMD mkdir -p "$LIB_DIR"
 
-# 下载脚本
+# 下载脚本（GitHub 失败则尝试 Gitee）
 echo "→ 下载 codes.sh..."
-curl -fsSL "https://raw.githubusercontent.com/$REPO/$BRANCH/scripts/codes.sh" -o "$LIB_DIR/codes.sh"
+
+# GitHub 源
+GITHUB_URL="https://raw.githubusercontent.com/$REPO/$BRANCH/scripts/codes.sh"
+# Gitee 备用源
+GITEE_URL="https://gitee.com/$REPO_GITEE/raw/main/scripts/codes.sh"
+
+downloaded=false
+if curl -fsSL --max-time 10 "$GITHUB_URL" -o "$LIB_DIR/codes.sh" 2>/dev/null; then
+    echo "  ✓ 从 GitHub 下载成功"
+    downloaded=true
+elif curl -fsSL --max-time 10 "$GITEE_URL" -o "$LIB_DIR/codes.sh" 2>/dev/null; then
+    echo "  ✓ 从 Gitee 下载成功（备用源）"
+    downloaded=true
+else
+    # 尝试 wget
+    if command -v wget &> /dev/null; then
+        if wget -q --timeout=10 -O "$LIB_DIR/codes.sh" "$GITHUB_URL" 2>/dev/null; then
+            echo "  ✓ 从 GitHub 下载成功 (wget)"
+            downloaded=true
+        elif wget -q --timeout=10 -O "$LIB_DIR/codes.sh" "$GITEE_URL" 2>/dev/null; then
+            echo "  ✓ 从 Gitee 下载成功 (wget备用源)"
+            downloaded=true
+        fi
+    fi
+fi
+
+if [ "$downloaded" = false ]; then
+    echo "  ✗ 下载失败，请检查网络"
+    echo ""
+    echo "手动下载链接:"
+    echo "  GitHub: $GITHUB_URL"
+    echo "  Gitee:  $GITEE_URL"
+    exit 1
+fi
+
 $SUDO_CMD chmod +x "$LIB_DIR/codes.sh"
 
 # 创建 wrapper 脚本
@@ -46,12 +81,6 @@ bash "$SCRIPT_DIR/codes.sh" "$@"
 EOF
 
 $SUDO_CMD chmod +x "$BIN_DIR/codes"
-
-# 添加到 .bashrc (如果需要)
-if ! grep -q "codes/lib" ~/.bashrc 2>/dev/null; then
-    # 不需要添加，codes 是独立命令
-    :
-fi
 
 echo ""
 echo "✓ 安装完成!"

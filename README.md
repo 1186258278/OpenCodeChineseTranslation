@@ -64,9 +64,14 @@ irm https://raw.githubusercontent.com/1186258278/OpenCodeChineseTranslation/main
 ```
 
 ```bash
-# Linux/macOS
+# Linux/macOS (GitHub)
 curl -fsSL https://raw.githubusercontent.com/1186258278/OpenCodeChineseTranslation/main/scripts/install.sh | bash
 ```
+
+> **国内用户**：脚本会自动尝试 GitHub，失败时切换到 Gitee 镜像。也可以直接使用 Gitee 链接：
+> ```bash
+> curl -fsSL https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation/raw/main/scripts/install.sh | bash
+> ```
 
 安装完成后重启终端，即可使用 `codes` 命令：
 
