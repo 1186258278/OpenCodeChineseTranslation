@@ -168,7 +168,7 @@ if ($hasCurl) {
     Write-Host ""
 
     Write-ColorOutput "⬇️  正在下载..." "Cyan"
-    & curl -L -o $zipPath $downloadUrl 2>&1 | Out-Null
+    & curl.exe -L -o $zipPath $downloadUrl
 
     if (Test-Path $zipPath) {
         Write-ColorOutput "✅ 下载完成" "Green"
