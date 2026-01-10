@@ -101,36 +101,57 @@ Write-Host ""
 # 3. 克隆/更新仓库
 Print-Step "3/7 获取项目文件..."
 
+# 删除已存在的目录（如果存在但不是 git 仓库）
+if ((Test-Path $PROJECT_DIR) -and (-not (Test-Path "$PROJECT_DIR\.git"))) {
+    Print-Info "删除非 Git 目录..."
+    Remove-Item -Recurse -Force $PROJECT_DIR -ErrorAction SilentlyContinue
+}
+
 if (Test-Path "$PROJECT_DIR\.git") {
     Print-Info "更新现有仓库..."
     Set-Location $PROJECT_DIR
-    git pull --rebase 2>$null
+    git pull --rebase 2>&1 | Out-Null
 } else {
     Print-Info "克隆仓库..."
     $cloneSuccess = $false
 
-    # 优先使用 Gitee
-    try {
-        git clone --depth 1 "https://gitee.com/$REPO_GITEE.git" "$PROJECT_DIR" 2>$null
-        if ($?) {
-            Print-Success "从 Gitee 克隆成功"
-            $cloneSuccess = $true
-        }
-    } catch {}
+    # 如果目录存在，先删除
+    if (Test-Path $PROJECT_DIR) {
+        Remove-Item -Recurse -Force $PROJECT_DIR -ErrorAction SilentlyContinue
+    }
 
-    # 备用 GitHub
-    if (-not $cloneSuccess) {
-        try {
-            git clone --depth 1 "https://github.com/1186258278/$REPO_NAME.git" "$PROJECT_DIR" 2>$null
-            if ($?) {
-                Print-Success "从 GitHub 克隆成功"
-                $cloneSuccess = $true
-            }
-        } catch {}
+    # 克隆 URL 列表
+    $cloneUrls = @(
+        "https://gitee.com/$REPO_GITEE.git",
+        "https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation.git",
+        "https://github.com/1186258278/$REPO_NAME.git"
+    )
+
+    $sourceNames = @("Gitee (主)", "Gitee (备用)", "GitHub")
+
+    for ($i = 0; $i -lt $cloneUrls.Count; $i++) {
+        $url = $cloneUrls[$i]
+        $source = $sourceNames[$i]
+
+        Print-Info "尝试从 $source 克隆..."
+
+        $result = cmd /c "git clone --depth 1 `"$url`" `"$PROJECT_DIR`" 2>&1" 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Print-Success "从 $source 克隆成功"
+            $cloneSuccess = $true
+            break
+        } else {
+            Print-Info "  $source 失败，尝试下一个..."
+        }
     }
 
     if (-not $cloneSuccess) {
-        Print-Error "克隆失败，请检查网络"
+        Print-Error "克隆失败，请检查网络连接"
+        Write-Host ""
+        Write-Host "可以手动克隆:" -ForegroundColor Yellow
+        Write-Host "  git clone https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation.git" -ForegroundColor White
+        Write-Host "  cd OpenCodeChineseTranslation" -ForegroundColor White
+        Write-Host "  .\scripts\opencode\opencode.ps1" -ForegroundColor White
         exit 1
     }
 
