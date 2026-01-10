@@ -267,13 +267,13 @@ install_docker() {
     fi
 
     print_color "$YELLOW" "  ! Docker 需要手动安装"
-    print_color "$DARK_GRAY""
-    print_color "$DARK_GRAY""  CentOS/RHEL/TencentOS:"
+    print_color "$DARK_GRAY" ""
+    print_color "$DARK_GRAY" "  CentOS/RHEL/TencentOS:"
     echo "    sudo yum install -y yum-utils"
     echo "    sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo"
     echo "    sudo yum install -y docker-ce docker-ce-cli containerd.io"
     echo ""
-    print_color "$DARK_GRAY""  Ubuntu/Debian:"
+    print_color "$DARK_GRAY" "  Ubuntu/Debian:"
     echo "    curl -fsSL https://get.docker.com | sh"
     echo ""
 }
