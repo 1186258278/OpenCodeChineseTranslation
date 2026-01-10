@@ -74,7 +74,7 @@ class Git {
         stdio: 'inherit'
       });
 
-      execSync('git reset --hard origin/master', {
+      execSync('git reset --hard origin/main', {
         cwd: this.opencodeDir,
         stdio: 'inherit'
       });
