@@ -40,7 +40,7 @@ class I18n {
             const content = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
             configs.push({
               category: entry.name,
-              file: file,
+              fileName: file,
               ...content
             });
           } catch (error) {
@@ -57,32 +57,33 @@ class I18n {
    * 应用单个配置文件的替换规则
    */
   applyConfig(config) {
-    if (!config.targetFile || !config.replacements) {
+    // 使用 'file' 字段（不是 'targetFile'）
+    if (!config.file || !config.replacements) {
       return { files: 0, replacements: 0 };
     }
 
-    const targetPath = path.join(this.opencodeDir, config.targetFile);
+    const targetPath = path.join(this.opencodeDir, config.file);
 
     if (!fs.existsSync(targetPath)) {
-      console.warn(`  跳过: ${config.targetFile} (文件不存在)`);
+      // 静默跳过不存在的文件
       return { files: 0, replacements: 0 };
     }
 
     let content = fs.readFileSync(targetPath, 'utf-8');
     let replaceCount = 0;
+    const originalContent = content;
 
-    for (const replacement of config.replacements) {
-      const { find, replace } = replacement;
-
+    // replacements 是键值对对象
+    for (const [find, replace] of Object.entries(config.replacements)) {
       if (content.includes(find)) {
         content = content.replaceAll(find, replace);
         replaceCount++;
       }
     }
 
-    if (replaceCount > 0) {
+    if (content !== originalContent) {
       fs.writeFileSync(targetPath, content, 'utf-8');
-      console.log(`  ✓ ${config.targetFile} (${replaceCount} 处替换)`);
+      console.log(`  ✓ ${config.file} (${replaceCount} 处替换)`);
     }
 
     return { files: 1, replacements: replaceCount };
@@ -118,11 +119,11 @@ class I18n {
     const errors = [];
 
     for (const config of configs) {
-      if (!config.targetFile) {
-        errors.push(`${config.category}/${config.file}: 缺少 targetFile`);
+      if (!config.file) {
+        errors.push(`${config.category}/${config.fileName}: 缺少 file 字段`);
       }
-      if (!config.replacements || config.replacements.length === 0) {
-        errors.push(`${config.category}/${config.file}: 缺少 replacements`);
+      if (!config.replacements || Object.keys(config.replacements).length === 0) {
+        errors.push(`${config.category}/${config.fileName}: 缺少 replacements`);
       }
     }
 
