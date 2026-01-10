@@ -402,6 +402,52 @@ function Install-All {
 
     # 显示汇总报告
     Show-Summary
+
+    # 安装 codes 命令
+    Install-Codes
+}
+
+# ==================== 安装 Codes ====================
+function Install-Codes {
+    Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    Write-ColorOutput Cyan "  安装 Codes 管理工具"
+    Write-ColorOutput Cyan "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    Write-Host ""
+
+    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $installDir = "$env:USERPROFILE\.codes"
+    $binDir = "$installDir\bin"
+
+    # 创建目录
+    if (-not (Test-Path $binDir)) {
+        New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+    }
+
+    # 复制脚本
+    if (Test-Path "$scriptDir\codes.ps1") {
+        Copy-Item "$scriptDir\codes.ps1" "$binDir\codes.ps1" -Force
+
+        # 创建 bat wrapper
+        $batContent = @"
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "$binDir\codes.ps1" %*
+"@
+        $batContent | Out-File "$binDir\codes.bat" -Encoding ASCII
+
+        # 添加到 PATH
+        $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        if ($currentPath -notlike "*$binDir*") {
+            [Environment]::SetEnvironmentVariable("Path", $currentPath + ";$binDir", "User")
+            Write-ColorOutput "  ✓ codes 已安装到 $installDir" "Green"
+            Write-ColorOutput "  ! 已添加到用户 PATH，请重启终端生效" "Yellow"
+        } else {
+            Write-ColorOutput "  ✓ codes 已安装到 $installDir" "Green"
+        }
+        Write-Host ""
+    } else {
+        Write-ColorOutput "  ⊙ codes.ps1 不存在，跳过安装" "Yellow"
+        Write-Host ""
+    }
 }
 
 function Install-BasicTools {

@@ -509,6 +509,64 @@ install_all() {
     fi
 
     print_summary
+
+    # 自动安装 codes 命令
+    install_codes
+}
+
+# ==================== 安装 codes ====================
+install_codes() {
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${CYAN}  安装 Codes 管理工具"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local install_dir="$HOME/.codes"
+    local bin_dir="$install_dir/bin"
+
+    mkdir -p "$bin_dir" 2>/dev/null
+
+    # 复制脚本
+    if [ -f "$script_dir/codes.sh" ]; then
+        cp "$script_dir/codes.sh" "$bin_dir/codes" 2>/dev/null
+        chmod +x "$bin_dir/codes" 2>/dev/null
+
+        # 创建 wrapper
+        cat > "$bin_dir/codes-wrapper" 2>/dev/null << 'WRAPPER'
+#!/bin/bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+if command -v npm &> /dev/null; then
+    NPM_BIN="$(npm bin -g 2>/dev/null)"
+    [ -n "$NPM_BIN" ] && export PATH="$NPM_BIN:$PATH"
+fi
+exec ~/.codes/bin/codes "$@"
+WRAPPER
+        chmod +x "$bin_dir/codes-wrapper" 2>/dev/null
+
+        # 创建软链接
+        $SUDO_CMD ln -sf "$bin_dir/codes-wrapper" /usr/local/bin/codes 2>/dev/null
+
+        # 添加到 .bashrc
+        local shell_config="$HOME/.bashrc"
+        [ -n "$ZSH_VERSION" ] && shell_config="$HOME/.zshrc"
+
+        if ! grep -q 'codes/bin' "$shell_config" 2>/dev/null; then
+            echo "" >> "$shell_config"
+            echo "# Codes - 开发环境管理工具" >> "$shell_config"
+            echo "export PATH=\"\$HOME/.codes/bin:\$PATH\"" >> "$shell_config"
+        fi
+
+        print_color "$GREEN" "  ✓ codes 已安装到 $install_dir"
+        print_color "$YELLOW" "  ! 运行 'source ~/.bashrc' 使更改生效"
+        print_color "$DARK_GRAY" "  ! 或直接使用: ~/.codes/bin/codes doctor"
+    else
+        print_color "$YELLOW" "  ⊙ codes.sh 不存在，跳过安装"
+    fi
+    echo ""
 }
 
 install_basic_tools() {
