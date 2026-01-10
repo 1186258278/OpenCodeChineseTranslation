@@ -107,9 +107,37 @@ else
     PROJECT_DIR="$CURRENT_DIR/$REPO_NAME"
 fi
 
-echo -e "${CYAN}开始安装 OpenCode 中文汉化版...${NC}"
-echo -e "${GRAY}目录: $PROJECT_DIR${NC}"
+# ==================== 安装前确认 ====================
+echo -e "${CYAN}即将安装 OpenCode 中文汉化版${NC}"
 echo ""
+echo -e "${WHITE}安装目录:${NC} ${GRAY}$PROJECT_DIR${NC}"
+echo -e "${WHITE}内容包括:${NC}"
+echo -e "  ${GRAY}• 自动清理旧脚本${NC}"
+echo -e "  ${GRAY}• OpenCode 源码${NC}"
+echo -e "  ${GRAY}• Codes 工具${NC}"
+echo -e "  ${GRAY}• 汉化管理工具${NC}"
+echo -e "  ${GRAY}• 全局命令 opencodecmd${NC}"
+echo ""
+echo -n -e "${YELLOW}按 Enter 继续，Ctrl+C 取消...${NC} "
+read
+echo ""
+
+# ==================== 1/7 检查环境 ====================
+print_step() {
+    echo -e "${CYAN}▶ $1${NC}"
+}
+
+print_success() {
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}✗ $1${NC}" >&2
+}
+
+print_info() {
+    echo -e "${GRAY}  $1${NC}"
+}
 
 # ==================== 1/7 检查环境 ====================
 print_step "1/7 检查系统环境..."
@@ -254,35 +282,39 @@ mkdir -p "$CMD_DIR" 2>/dev/null
 cat > "$CMD_DIR/opencodecmd" << 'OPENCODECMD_EOF'
 #!/bin/bash
 # OpenCode 中文汉化管理工具 - 全局命令
-# 这是一个独立脚本，不依赖其他文件中的函数
 
-# 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# 向上递归查找项目目录
+# 查找项目目录
 find_project() {
+    # 1. 从当前目录向上递归
     local dir="$(pwd)"
     while [ "$dir" != "/" ]; do
         if [ -f "$dir/scripts/opencode-linux/opencode.js" ]; then
             echo "$dir"
             return 0
         fi
-        if [ -f "$dir/scripts/opencode/opencode.ps1" ]; then
-            echo "$dir"
-            return 0
-        fi
         dir="$(dirname "$dir")"
     done
 
-    # 检查用户主目录
-    if [ -f "$HOME/OpenCodeChineseTranslation/scripts/opencode-linux/opencode.js" ]; then
-        echo "$HOME/OpenCodeChineseTranslation"
-        return 0
-    fi
+    # 2. 检查用户主目录下的可能位置
+    local locations=(
+        "$HOME/OpenCodeChineseTranslation"
+        "$HOME/OpenCodeChineseTranslation"
+        "$HOME/opencode"
+        "$(dirname "$(pwd)")/OpenCodeChineseTranslation"
+    )
+
+    for loc in "${locations[@]}"; do
+        if [ -f "$loc/scripts/opencode-linux/opencode.js" ]; then
+            echo "$loc"
+            return 0
+        fi
+    done
 
     return 1
 }
@@ -290,20 +322,18 @@ find_project() {
 PROJECT=$(find_project)
 
 if [ -z "$PROJECT" ]; then
-    echo -e "${RED}✗ 未找到 OpenCode 项目目录${NC}" >&2
-    echo -e "${CYAN}请先运行安装脚本或进入项目目录${NC}" >&2
-    echo "" >&2
-    echo "安装命令:" >&2
+    echo -e "${RED}✗ 未找到 OpenCode 项目${NC}" >&2
+    echo -e "${CYAN}安装命令:${NC}" >&2
     echo "  curl -fsSL https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation/raw/main/scripts/install.sh | bash" >&2
     exit 1
 fi
 
-# 执行对应的脚本
+# 执行脚本
 if [ -f "$PROJECT/scripts/opencode-linux/opencode.js" ]; then
     cd "$PROJECT" && node "$PROJECT/scripts/opencode-linux/opencode.js" "$@"
-elif [ -f "$PROJECT/scripts/opencode/opencode.ps1" ]; then
-    echo -e "${YELLOW}请在 PowerShell 中运行汉化脚本${NC}"
-    echo -e "或运行: pwsh \"$PROJECT/scripts/opencode/opencode.ps1\""
+else
+    echo -e "${RED}✗ 找不到汉化脚本: $PROJECT/scripts/opencode-linux/opencode.js${NC}" >&2
+    exit 1
 fi
 OPENCODECMD_EOF
 

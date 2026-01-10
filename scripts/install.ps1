@@ -100,8 +100,18 @@ if ((Test-Path "$currentDir\.git") -and (Test-Path "$currentDir\opencode-i18n"))
     $PROJECT_DIR = "$currentDir\$REPO_NAME"
 }
 
-Write-Host "开始安装 OpenCode 中文汉化版..." -ForegroundColor Cyan
-Write-Host "目录: $PROJECT_DIR" -ForegroundColor Gray
+# ==================== 安装前确认 ====================
+Write-Host "即将安装 OpenCode 中文汉化版" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "安装目录: $PROJECT_DIR" -ForegroundColor White
+Write-Host "内容包括:" -ForegroundColor White
+Write-Host "  • 自动清理旧脚本" -ForegroundColor Gray
+Write-Host "  • OpenCode 源码" -ForegroundColor Gray
+Write-Host "  • Codes 工具" -ForegroundColor Gray
+Write-Host "  • 汉化管理工具" -ForegroundColor Gray
+Write-Host "  • 全局命令 opencodecmd" -ForegroundColor Gray
+Write-Host ""
+$null = Read-Host "按 Enter 继续，Ctrl+C 取消"
 Write-Host ""
 
 # ==================== 1/7 检查环境 ====================
@@ -211,15 +221,27 @@ New-Item -ItemType Directory -Path $CMD_DIR -Force | Out-Null
 $opencodeCmdContent = @'
 # OpenCode 中文汉化管理工具 - 全局命令
 function Find-Project {
+    # 1. 从当前目录向上递归
     $dir = Get-Location
     while ($dir.Path -ne $null -and $dir.Path -ne "") {
         if (Test-Path "$dir\scripts\opencode\opencode.ps1") { return $dir.Path }
         if (Test-Path "$dir\scripts\opencode-linux\opencode.js") { return $dir.Path }
         $dir = $dir.Parent
     }
-    if (Test-Path "$env:USERPROFILE\OpenCodeChineseTranslation\scripts\opencode\opencode.ps1") {
-        return "$env:USERPROFILE\OpenCodeChineseTranslation"
+
+    # 2. 检查常见位置
+    $locations = @(
+        "$env:USERPROFILE\OpenCodeChineseTranslation",
+        "$env:USERPROFILE\opencode",
+        (Split-Path (Get-Location).Path -Parent | ForEach-Object { Join-Path $_ "OpenCodeChineseTranslation" })
+    )
+
+    foreach ($loc in $locations) {
+        if ($loc -and (Test-Path "$loc\scripts\opencode\opencode.ps1")) {
+            return $loc
+        }
     }
+
     return $null
 }
 
@@ -231,7 +253,7 @@ if ($project) {
         & opencode @args
     }
 } else {
-    Write-Host "✗ 未找到 OpenCode 项目目录" -ForegroundColor Red
+    Write-Host "✗ 未找到 OpenCode 项目" -ForegroundColor Red
     Write-Host "安装命令: irm https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation/raw/main/scripts/install.ps1 | iex" -ForegroundColor Cyan
     exit 1
 }
