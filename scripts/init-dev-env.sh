@@ -149,7 +149,7 @@ install_nodejs() {
                         sudo apt-get update && sudo apt-get install -y nodejs npm
                         ;;
                     yum)
-                        sudo yum install -y nodejs npm
+                        sudo yum install -y nodejs npm || sudo yum update -y nodejs npm
                         ;;
                     brew)
                         brew upgrade node
@@ -168,8 +168,35 @@ install_nodejs() {
             sudo apt-get install -y nodejs
             ;;
         yum)
-            curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash -
-            sudo yum install -y nodejs
+            # 先启用 EPEL 仓库
+            if ! rpm -q epel-release &>/dev/null; then
+                print_color "$DARK_GRAY" "  安装 EPEL 仓库..."
+                sudo yum install -y epel-release || sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-$(rpm -E '%{rhel}').noarch.rpm
+            fi
+
+            # 尝试从 EPEL 安装
+            if sudo yum install -y nodejs npm 2>/dev/null; then
+                print_color "$GREEN" "  ✓ Node.js 从 EPEL 安装成功"
+            else
+                # EPEL 安装失败，尝试使用 nvm
+                print_color "$YELLOW" "  ! EPEL 安装失败，尝试使用 nvm 安装..."
+
+                if ! command_exists nvm; then
+                    # 安装 nvm
+                    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+                    export NVM_DIR="$HOME/.nvm"
+                    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                fi
+
+                if command_exists nvm; then
+                    nvm install --lts
+                    nvm use --lts
+                    print_color "$GREEN" "  ✓ Node.js 通过 nvm 安装成功"
+                else
+                    print_color "$RED" "  ✗ Node.js 安装失败"
+                    print_color "$YELLOW" "  请手动安装: yum install nodejs npm"
+                fi
+            fi
             ;;
         brew)
             brew install node
@@ -177,7 +204,8 @@ install_nodejs() {
     esac
 
     if command_exists node; then
-        print_color "$GREEN" "  ✓ Node.js 安装成功"
+        local version=$(get_version node)
+        print_color "$GREEN" "  ✓ Node.js 安装成功: $version"
     fi
 }
 
