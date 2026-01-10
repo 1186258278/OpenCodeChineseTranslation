@@ -80,26 +80,58 @@ function Cleanup-OldScripts {
 function Install-Bun {
     Write-Host "  安装 Bun (构建工具)..." -ForegroundColor Gray
 
-    # 使用官方安装脚本
-    $bunInstallScript = "irm bun.sh/install.ps1|iex"
-    try {
-        Invoke-Expression $bunInstallScript
+    $bunPath = "$env:USERPROFILE\.bun\bin"
 
-        # 添加 bun 到 PATH
-        $bunPath = "$env:USERPROFILE\.bun\bin"
+    # 检查是否已安装
+    if (Get-Command bun -ErrorAction SilentlyContinue) {
+        Write-Host "  ✓ Bun 已安装" -ForegroundColor Green
+        return $true
+    }
+
+    # 方式1: 使用官方安装脚本
+    try {
+        Write-Host "  正在从官方源安装..." -ForegroundColor Gray
+        irm https://bun.sh/install.ps1 | iex
+
+        # 添加到 PATH
         if ($env:Path -notlike "*$bunPath*") {
             $env:Path = "$bunPath;$env:Path"
         }
 
-        $version = & bun --version 2>$null
-        if ($version) {
+        # 刷新命令
+        $null = Get-Command bun -ErrorAction SilentlyContinue
+
+        if (Get-Command bun -ErrorAction SilentlyContinue) {
+            $version = bun --version 2>$null
             Write-Host "  ✓ Bun 已安装: $version" -ForegroundColor Green
             return $true
         }
     } catch {
-        Write-Host "  ✗ Bun 安装失败" -ForegroundColor Red
+        Write-Host "  官方安装失败，尝试 npm..." -ForegroundColor Yellow
     }
 
+    # 方式2: 使用 npm 全局安装
+    try {
+        npm install -g bun *> $null
+
+        # npm 全局路径
+        $npmGlobal = npm config get prefix
+        $npmBinPath = "$npmGlobal\npm-global\bin"
+        if ($env:Path -notlike "*$npmBinPath*") {
+            $env:Path = "$npmBinPath;$env:Path"
+        }
+
+        if (Get-Command bun -ErrorAction SilentlyContinue) {
+            $version = bun --version 2>$null
+            Write-Host "  ✓ Bun 已安装 (通过 npm): $version" -ForegroundColor Green
+            return $true
+        }
+    } catch {
+        Write-Host "  npm 安装失败" -ForegroundColor Yellow
+    }
+
+    Write-Host "  ⚠ Bun 安装跳过，请稍后手动安装" -ForegroundColor Yellow
+    Write-Host "    运行: npm install -g bun" -ForegroundColor DarkGray
     return $false
 }
 

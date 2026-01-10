@@ -41,10 +41,60 @@ if (!$gitInstalled) {
 # 检查 Bun 是否安装
 $bunInstalled = Get-Command bun -ErrorAction SilentlyContinue
 if (!$bunInstalled) {
-    Write-ColorOutput "⚠️  Bun 未安装或不在 PATH 中" "Yellow"
-    Write-Host "   请先安装 Bun: npm install -g bun" -ForegroundColor DarkGray
+    Write-ColorOutput "⚠️  Bun 未安装，正在自动安装..." "Yellow"
+
+    # 尝试安装 Bun
+    try {
+        Write-Host "   正在从官方源安装..." -ForegroundColor Gray
+
+        # 方式1: 官方安装脚本
+        irm https://bun.sh/install.ps1 | iex
+
+        # 添加到 PATH
+        $bunPath = "$env:USERPROFILE\.bun\bin"
+        if ($env:Path -notlike "*$bunPath*") {
+            $env:Path = "$bunPath;$env:Path"
+        }
+
+        # 刷新命令
+        $bunInstalled = Get-Command bun -ErrorAction SilentlyContinue
+
+        if ($bunInstalled) {
+            $version = bun --version 2>$null
+            Write-ColorOutput "✓ Bun 已安装: $version" "Green"
+        } else {
+            throw "官方安装失败"
+        }
+    } catch {
+        Write-Host "   官方安装失败，尝试 npm..." -ForegroundColor Yellow
+
+        # 方式2: npm 全局安装
+        try {
+            npm install -g bun *> $null
+
+            # npm 全局路径
+            $npmGlobal = npm config get prefix
+            $npmBinPath = "$npmGlobal"
+            if ($env:Path -notlike "*$npmBinPath*") {
+                $env:Path = "$npmBinPath;$env:Path"
+            }
+
+            $bunInstalled = Get-Command bun -ErrorAction SilentlyContinue
+
+            if ($bunInstalled) {
+                $version = bun --version 2>$null
+                Write-ColorOutput "✓ Bun 已安装 (通过 npm): $version" "Green"
+            } else {
+                throw "npm 安装失败"
+            }
+        } catch {
+            Write-ColorOutput "❌ Bun 自动安装失败" "Red"
+            Write-Host "   请手动安装: npm install -g bun" -ForegroundColor DarkGray
+            Write-Host ""
+            exit 1
+        }
+    }
     Write-Host ""
-    exit 1
 }
 
 Write-ColorOutput "✅ Git 已安装" "Green"
