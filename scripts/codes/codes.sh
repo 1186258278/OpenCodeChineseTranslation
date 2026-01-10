@@ -145,6 +145,29 @@ load_bun() {
     return 1
 }
 
+# 自动加载 npm 全局 bin 目录到 PATH
+load_npm() {
+    # 如果 npm 命令可用
+    if command -v npm &> /dev/null; then
+        local npm_bin="$(npm config get prefix 2>/dev/null)/bin"
+        if [ -n "$npm_bin" ] && [ -d "$npm_bin" ]; then
+            # 检查是否已在 PATH 中
+            if [[ ":$PATH:" != *":$npm_bin:"* ]]; then
+                export PATH="$npm_bin:$PATH"
+            fi
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# 自动刷新环境（每次启动时调用）
+refresh_env() {
+    load_nvm
+    load_bun
+    load_npm
+}
+
 # ==================== 环境诊断 ====================
 show_status() {
     local tool_name=$1
@@ -904,14 +927,8 @@ cmd_node() {
 
 # ==================== 快捷启动 ====================
 cmd_helper() {
-    load_nvm
-    load_bun
-
-    # 确保 npm bin 在 PATH 中
-    local npm_bin="$(npm bin -g 2>/dev/null)"
-    if [ -n "$npm_bin" ]; then
-        export PATH="$npm_bin:$PATH"
-    fi
+    # 刷新环境（确保 npm bin 在 PATH 中）
+    refresh_env
 
     if has_cmd coding-helper; then
         coding-helper "$@"
@@ -1119,6 +1136,9 @@ WRAPPER_EOF
 
 # ==================== 主入口 ====================
 main() {
+    # 每次启动时自动刷新环境变量
+    refresh_env
+
     local command=${1:-menu}
 
     case $command in
