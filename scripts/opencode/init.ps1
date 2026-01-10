@@ -14,12 +14,13 @@ function Write-ColorOutput {
     Write-Host $Message -ForegroundColor $ForegroundColor
 }
 
-# 获取项目根目录（脚本所在目录的父目录）
-$SCRIPT_DIR = $PSScriptRoot
-if (!$SCRIPT_DIR) {
-    $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
+# 获取项目根目录（脚本所在目录的父目录的父目录）
+$SCRIPT_DIR = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$PROJECT_DIR = Split-Path -Parent (Split-Path -Parent $SCRIPT_DIR)
+# 如果解析失败，使用当前工作目录
+if (!$PROJECT_DIR) {
+    $PROJECT_DIR = Get-Location
 }
-$PROJECT_DIR = Split-Path -Parent $SCRIPT_DIR
 $SRC_DIR = "$PROJECT_DIR\opencode-zh-CN"
 $UPSTREAM_REPO = "https://github.com/anomalyco/opencode.git"
 

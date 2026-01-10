@@ -37,16 +37,11 @@ $REPO_BASE_URL = "https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation/ra
 
 # 配置路径 (使用脚本所在目录，自动适配)
 $SCRIPT_DIR = if ($PSScriptRoot) { $PSScriptRoot } else { "." }
-# 脚本在 scripts/opencode/ 子目录中，需要获取项目根目录
-$PROJECT_DIR = if (Test-Path "$SCRIPT_DIR\..\..\opencode-i18n") {
-    (Resolve-Path "$SCRIPT_DIR\..\..").Path
-} else {
-    # 备用：直接使用脚本父目录的父目录
-    if (Test-Path "$SCRIPT_DIR\..\..") {
-        (Resolve-Path "$SCRIPT_DIR\..\..").Path
-    } else {
-        $SCRIPT_DIR
-    }
+# 脚本在 scripts/opencode/ 子目录中，项目根目录是脚本的上上级目录
+$PROJECT_DIR = Split-Path -Parent (Split-Path -Parent $SCRIPT_DIR)
+# 如果解析失败，使用当前工作目录
+if (!$PROJECT_DIR) {
+    $PROJECT_DIR = Get-Location
 }
 $SRC_DIR = "$PROJECT_DIR\opencode-zh-CN"
 $PACKAGE_DIR = "$SRC_DIR\packages\opencode"
