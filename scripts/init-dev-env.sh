@@ -194,6 +194,16 @@ install_nodejs() {
     fi
 }
 
+# 添加 Bun 到 bashrc 的辅助函数
+_add_bun_to_bashrc() {
+    if ! grep -q 'BUN_INSTALL' ~/.bashrc 2>/dev/null; then
+        echo "" >> ~/.bashrc
+        echo 'export BUN_INSTALL="$HOME/.bun"' >> ~/.bashrc
+        echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> ~/.bashrc
+        print_color "$YELLOW" "  ! 已添加 bun 配置到 ~/.bashrc"
+    fi
+}
+
 install_bun() {
     print_color "$CYAN" "安装 Bun..."
 
@@ -203,28 +213,37 @@ install_bun() {
         return
     fi
 
-    # Bun 官方安装脚本
-    print_color "$DARK_GRAY" "  使用官方安装脚本..."
-    curl -fsSL https://bun.sh/install | bash
-
-    # 添加到 PATH
-    if [ -f "$HOME/.bun/bin/bun" ]; then
-        export BUN_INSTALL="$HOME/.bun"
-        export PATH="$BUN_INSTALL/bin:$PATH"
-        print_color "$GREEN" "  ✓ Bun 安装成功"
-        print_color "$YELLOW" "  ! 请将以下添加到 ~/.bashrc 或 ~/.zshrc:"
-        echo ""
-        echo "    export BUN_INSTALL=\"\$HOME/.bun\""
-        echo "    export PATH=\"\$BUN_INSTALL/bin:\$PATH\""
-
-        # 自动添加到 bashrc
-        if ! grep -q 'BUN_INSTALL' ~/.bashrc 2>/dev/null; then
-            echo "" >> ~/.bashrc
-            echo 'export BUN_INSTALL="$HOME/.bun"' >> ~/.bashrc
-            echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> ~/.bashrc
-            print_color "$YELLOW" "  ! 已添加 bun 配置到 ~/.bashrc"
+    # 方法1: 官方安装脚本
+    print_color "$DARK_GRAY" "  方法1: 官方安装脚本..."
+    if curl -fsSL https://bun.sh/install | bash 2>/dev/null; then
+        if [ -f "$HOME/.bun/bin/bun" ]; then
+            export BUN_INSTALL="$HOME/.bun"
+            export PATH="$BUN_INSTALL/bin:$PATH"
+            print_color "$GREEN" "  ✓ Bun 安装成功"
+            _add_bun_to_bashrc
+            return
         fi
     fi
+
+    # 方法2: 使用 npm 安装（备用方案）
+    print_color "$YELLOW" "  官方脚本失败，尝试使用 npm 安装..."
+    if command_exists npm; then
+        npm install -g bun 2>/dev/null
+        if command_exists bun; then
+            print_color "$GREEN" "  ✓ Bun 安装成功 (通过 npm)"
+            return
+        fi
+    fi
+
+    # 方法3: 手动下载二进制（备用方案）
+    print_color "$YELLOW" "  npm 安装失败，请手动安装 Bun:"
+    echo ""
+    echo "    # 方式1: 使用代理访问 GitHub"
+    echo "    curl -fsSL https://bun.sh/install | bash"
+    echo ""
+    echo "    # 方式2: 下载二进制到 /tmp 后解压"
+    echo "    # 访问 https://github.com/oven-sh/bun/releases"
+    echo ""
 }
 
 install_git() {
