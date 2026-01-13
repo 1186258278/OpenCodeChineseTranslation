@@ -2,14 +2,9 @@
   "file": "src/cli/cmd/tui/component/dialog-status.tsx",
   "description": "状态对话框",
   "replacements": {
-    "Status\n": "状态\n",
-    "No MCP Servers": "暂无 MCP 服务器",
-    "MCP Servers</text>": "MCP 服务器</text>",
-    "LSP Servers</text>": "LSP 服务器</text>",
-    "No Formatters": "暂无格式化工具",
-    "Formatters</text>": "格式化工具</text>",
-    "No Plugins": "暂无插件",
-    "Plugins</text>": "插件</text>",
-    "Needs authentication (run: opencode mcp auth {key})": "需要认证 (运行: opencode mcp auth {key})"
-  }
+    "Status": "状态",
+    "Connected": "已连接",
+    "Disabled in configuration": "已在配置中禁用"
+  },
+  "note": "其他文本已在源文件中被汉化，无需重复配置"
 }

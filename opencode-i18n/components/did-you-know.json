@@ -1,8 +1,0 @@
-{
-  "file": "src/cli/cmd/tui/component/did-you-know.tsx",
-  "description": "提示框",
-  "replacements": {
-    "Did you know?": "你知道吗？",
-    "hide tips": "隐藏提示"
-  }
-}

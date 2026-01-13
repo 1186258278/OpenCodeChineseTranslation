@@ -3,17 +3,17 @@
   "description": "错误和状态消息",
   "replacements": {
     "message: `Invalid model format: ${args.model}`": "message: `无效的模型格式: ${args.model}`",
-    "message: `OpenCode updated to v${evt.properties.version}`": "message: `OpenCode 已更新到 v${evt.properties.version}`",
     "message: `OpenCode v${evt.properties.version} is available. Run 'opencode upgrade' to update manually.`": "message: `OpenCode v${evt.properties.version} 可用。运行 'opencode upgrade' 手动更新。`",
     "Copy issue URL (exception info pre-filled)": "复制问题链接（预填异常信息）",
     "\"While openrouter is a convenient way to access LLMs your request will often be routed to subpar providers that do not work well in our testing.\\n\\nFor reliable access to models check out OpenCode Zen\\nhttps://opencode.ai/zen\"": "\"虽然 openrouter 是访问 LLM 的便捷方式，但您的请求经常会被路由到在测试中表现不佳的提供商。\\n\\n要可靠地访问模型，请查看 OpenCode Zen\\nhttps://opencode.ai/zen\"",
     "title: \"Model cycle\"": "title: \"模型循环\"",
     "title: \"Favorite cycle reverse\"": "title: \"收藏反向循环\"",
-    "title: \"Agent cycle reverse\"": "title: \"智能体反向循环\"",
     "title: \"Favorite cycle\"": "title: \"收藏循环\"",
     "title: \"Model cycle reverse\"": "title: \"模型反向循环\"",
     "title: \"Variant cycle\"": "title: \"变体循环\"",
     "title: \"Agent cycle\"": "title: \"智能体循环\"",
+    "title: \"Agent cycle reverse\"": "title: \"智能体反向循环\"",
     "console.error(`Failed to copy console selection to clipboard: ${error}`)": "console.error(`复制控制台选择到剪贴板失败: ${error}`)"
-  }
+  },
+  "note": "OpenCode updated to v${evt.properties.version} 在源代码中不存在，已移除"
 }

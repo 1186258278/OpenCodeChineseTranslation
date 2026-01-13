@@ -3133,6 +3133,7 @@ function Test-I18NPatches {
     $totalTests = 0
     $passedTests = 0
     $failedItems = @()
+    $warnings = @()
 
     Write-StepMessage "开始验证汉化结果..." "INFO"
     Write-Host ""
@@ -3172,20 +3173,60 @@ function Test-I18NPatches {
         $patchPassed = $true
         $patchFailed = @()
 
+        # 检查源文件状态（新增：检测源文件是否已被汉化）
+        $hasChineseChar = [regex]::IsMatch($content, '[\u4e00-\u9fa5]')
+        $originalMatches = 0
+        $translatedMatches = 0
+
         $replacements = ConvertTo-ReplacementHashtable -Replacements $patch.replacements
 
         foreach ($item in $replacements.GetEnumerator()) {
             $totalTests++
 
+            $hasOriginal = $content.IndexOf($item.Key) -ge 0
+            $hasTranslated = $content.IndexOf($item.Value) -ge 0
+
+            # 统计原文和译文匹配数
+            if ($hasOriginal) { $originalMatches++ }
+            if ($hasTranslated) { $translatedMatches++ }
+
             # 检查文件中是否包含翻译后的文本
-            if ($content.IndexOf($item.Value) -ge 0) {
+            if ($hasTranslated) {
                 $passedTests++
             } else {
                 $patchPassed = $false
                 $patchFailed += @{
                     Original = $item.Key
                     Expected = $item.Value
+                    HasOriginal = $hasOriginal
                 }
+            }
+        }
+
+        # 检测源文件状态异常（新增）
+        if ($hasChineseChar -and $originalMatches -gt 0) {
+            # 源文件同时包含中文和配置中的原文 → 可能已被部分汉化
+            $warnings += @{
+                Module = $patchKey
+                File = $patch.file
+                Type = "PartialChinese"
+                Message = "源文件同时包含中文和英文原文，可能处于不一致状态"
+            }
+        } elseif ($hasChineseChar -and $translatedMatches -eq 0) {
+            # 源文件包含中文但没有配置中的译文 → 可能是其他版本的汉化
+            $warnings += @{
+                Module = $patchKey
+                File = $patch.file
+                Type = "UnknownChinese"
+                Message = "源文件包含中文但无匹配译文，可能是其他版本汉化"
+            }
+        } elseif (!$hasChineseChar -and $translatedMatches -eq 0 -and $originalMatches -eq 0) {
+            # 源文件既无中文也无配置中的原文 → 代码可能已更新
+            $warnings += @{
+                Module = $patchKey
+                File = $patch.file
+                Type = "CodeChanged"
+                Message = "源文件无匹配文本，代码可能已更新"
             }
         }
 
@@ -3236,6 +3277,21 @@ function Test-I18NPatches {
     Write-Host "   └─────────────────────────────────────────────────────────┘" -ForegroundColor DarkGray
     Write-Host ""
 
+    # 显示警告信息（新增）
+    if ($warnings.Count -gt 0) {
+        Write-StepMessage "检测到潜在问题" "WARNING"
+        Write-Host ""
+        foreach ($warn in $warnings | Select-Object -First 5) {
+            Write-Host "   [$($warn.Module)] $($warn.File)" -ForegroundColor Yellow
+            Write-Host "   → $($warn.Message)" -ForegroundColor DarkGray
+            Write-Host ""
+        }
+        if ($warnings.Count -gt 5) {
+            Write-Host "   ... 还有 $($warnings.Count - 5) 个警告" -ForegroundColor DarkGray
+            Write-Host ""
+        }
+    }
+
     if ($failedItems.Count -eq 0) {
         Write-StepMessage "所有汉化验证通过！" "SUCCESS"
         Write-Host ""
@@ -3261,14 +3317,16 @@ function Test-I18NPatches {
             for ($i = 0; $i -lt [Math]::Min(3, $item.Failures.Count); $i++) {
                 $f = $item.Failures[$i]
                 $preview = if ($f.Expected.Length -gt 50) { $f.Expected.Substring(0, 47) + "..." } else { $f.Expected }
-                Write-Host "         ✗ $preview" -ForegroundColor DarkGray
+                $status = if ($f.HasOriginal) { "[原文存在]" } else { "[原文不存在]" }
+                Write-Host "         ✗ $preview $status" -ForegroundColor DarkGray
             }
         }
         Write-Host ""
         Write-Host "   可能原因:" -ForegroundColor Yellow
         Write-Host "     1. 原文已被更新，请检查源文件" -ForegroundColor DarkGray
         Write-Host "     2. 配置文件中的匹配模式需要调整" -ForegroundColor DarkGray
-        Write-Host "     3. 运行 [4] 调试工具 查看详情" -ForegroundColor DarkGray
+        Write-Host "     3. 源文件状态异常，建议先运行 [R] 恢复纯净" -ForegroundColor DarkGray
+        Write-Host "     4. 运行 [4] 调试工具 查看详情" -ForegroundColor DarkGray
     }
 
     Write-Host ""

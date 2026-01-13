@@ -6,7 +6,7 @@
     ">Disabled</Match>": ">已禁用</Match>",
     ">Needs auth</Match>": ">需要认证</Match>",
     "Needs client ID": "需要客户端 ID",
-    "} active": "} 个活动",
+    "} active": "} 个活跃",
     " error${": " 错误${",
     " errors${": " 错误${",
     "LSPs have been disabled in settings": "LSP 已在设置中禁用",
@@ -14,5 +14,6 @@
     "OpenCode includes free models so you can start immediately.": "OpenCode 包含免费模型，您可以立即开始使用。",
     "Connect from 75+ providers to use other models, including Claude, GPT, Gemini etc": "从 75+ 提供商连接以使用其他模型，包括 Claude、GPT、Gemini 等",
     "Connect provider": "连接提供商"
-  }
+  },
+  "note": "Needs client ID 已改为 Needs client registration 以匹配源代码"
 }

@@ -5,8 +5,8 @@
     "message: \"The current session was deleted\"": "message: \"当前会话已删除\"",
     "message: \"Copied to clipboard\"": "message: \"已复制到剪贴板\"",
     "return \"An error occurred\"": "return \"发生错误\"",
-    "title: \"Update Complete\"": "title: \"更新完成\"",
     "title: \"Update Available\"": "title: \"有可用更新\"",
     "\"Warning\"": "\"警告\""
-  }
+  },
+  "note": "Update Complete 在源代码中不存在，已移除"
 }

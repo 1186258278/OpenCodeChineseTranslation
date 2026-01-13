@@ -2,21 +2,9 @@
   "file": "src/cli/cmd/tui/routes/session/sidebar.tsx",
   "description": "侧边栏",
   "replacements": {
-    "tokens</text>": "令牌</text>",
-    "% used</text>": "% 已用</text>",
     "} active": "} 个活跃",
-    "} connected, ": "} 个已连接, ",
-    "error${": "错误${",
-    ">Connected</Match>": ">已连接</Match>",
-    ">Disabled</Match>": ">已禁用</Match>",
-    ">Needs auth</Match>": ">需要认证</Match>",
-    "<b>Context</b>": "<b>上下文</b>",
-    "<b>Todo</b>": "<b>待办</b>",
-    "Modified Files": "修改的文件",
-    "Getting started": "开始使用",
-    "Open Code": "OpenCode",
-    "Get started": "开始",
-    "LSP will activate when reading files": "LSP 将在读取文件时激活",
-    "LSP disabled in settings": "LSP 已在设置中禁用"
-  }
+    " error${": " 错误${",
+    "\"s\" : \"": "\"\" : \""
+  },
+  "note": "匹配原始英文源文件，需要在恢复纯净后应用汉化"
 }
