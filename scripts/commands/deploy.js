@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const { exec } = require('../core/utils.js');
 const { getBinDir, getOpencodeDir, getPlatform } = require('../core/utils.js');
-const { step, success, error, indent } = require('../core/colors.js');
+const { step, success, error, indent, warn } = require('../core/colors.js');
 
 /**
  * 获取编译产物的路径
@@ -50,6 +50,26 @@ function getCompiledBinary() {
 }
 
 /**
+ * 安全复制文件（处理目标文件被占用的情况）
+ */
+function safeCopy(source, target) {
+  // 如果目标文件存在，先尝试删除
+  if (fs.existsSync(target)) {
+    try {
+      fs.unlinkSync(target);
+    } catch (e) {
+      if (e.code === 'EBUSY' || e.code === 'EPERM') {
+        throw new Error('目标文件正在使用中，请先关闭所有 opencode 进程');
+      }
+      throw e;
+    }
+  }
+
+  // 复制文件
+  fs.copyFileSync(source, target);
+}
+
+/**
  * 部署到 Windows 全局
  */
 function deployToWindows(binaryPath) {
@@ -64,8 +84,16 @@ function deployToWindows(binaryPath) {
 
   const targetPath = path.join(npmGlobal, 'opencode.exe');
 
-  // 复制文件
-  fs.copyFileSync(binaryPath, targetPath);
+  // 安全复制文件
+  try {
+    safeCopy(binaryPath, targetPath);
+  } catch (e) {
+    warn(`部署警告: ${e.message}`);
+    indent(`请手动复制:`, 2);
+    indent(`  从: ${binaryPath}`, 4);
+    indent(`  到: ${targetPath}`, 4);
+    return null;
+  }
 
   // 创建 opencode.cmd 包装器
   const cmdPath = path.join(npmGlobal, 'opencode.cmd');
