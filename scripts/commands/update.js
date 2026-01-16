@@ -23,7 +23,7 @@ async function run(options = {}) {
       const { remove } = require('../core/utils.js');
       remove(opencodeDir);
     } else {
-      const result = await pullRepo(opencodeDir, { branch: 'main' });
+      const result = await pullRepo(opencodeDir);
       return result;
     }
   }
@@ -33,7 +33,7 @@ async function run(options = {}) {
   const result = await cloneRepo(
     'https://github.com/anomalyco/opencode.git',
     opencodeDir,
-    { depth: 1, branch: 'main' }
+    { depth: 1 }
   );
 
   return result;

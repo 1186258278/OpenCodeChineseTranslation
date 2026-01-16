@@ -98,6 +98,7 @@ function createCLI() {
     .description('完整工作流：更新 → 恢复 → 汉化 → 编译')
     .option('--skip-update', '跳过更新源码')
     .option('--skip-build', '跳过编译')
+    .option('-y, --auto', '自动模式（跳过所有确认）')
     .action(async (options) => {
       try {
         const result = await fullCmd.run(options);
