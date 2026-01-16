@@ -92,7 +92,7 @@ opencodenpm full
 
 | 命令 | 别名 | 说明 |
 |------|------|------|
-| `opencodenpm` | - | 交互式菜单 |
+| `opencodenpm` | `ui` | 交互式菜单 |
 | `opencodenpm update` | - | 更新 OpenCode 源码 |
 | `opencodenpm apply` | - | 应用汉化配置 |
 | `opencodenpm build` | - | 编译构建 OpenCode |
