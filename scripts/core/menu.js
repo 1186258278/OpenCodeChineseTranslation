@@ -98,11 +98,18 @@ function getBasicStatus() {
   const platform = process.platform;
   const exeName = platform === 'win32' ? 'opencode.exe' : 'opencode';
 
+  // 获取 Bun 版本状态
+  const { getCurrentBunVersion, getRecommendedBunVersion } = require('./env.js');
+  const currentBun = getCurrentBunVersion();
+  const recommendedBun = getRecommendedBunVersion();
+
   return {
     opencodeExists: existsSync(opencodeDir),
     i18nExists: existsSync(i18nDir),
     binExists: existsSync(path.join(binDir, exeName)),
     opencodeDir,
+    currentBun,
+    recommendedBun
   };
 }
 
@@ -117,11 +124,23 @@ function buildStatusLines(basicStatus, updateStatus = null) {
   // 第一行：版本和路径
   statusLines.push(`{cyan-fg}版本{/cyan-fg} ${VERSION_SHORT}  {cyan-fg}路径{/cyan-fg} ${shortPath}`);
 
-  // 第二行：基础状态
+  // 第二行：基础状态 + Bun 版本
   const srcStatus = basicStatus.opencodeExists ? '{green-fg}✓源码{/green-fg}' : '{red-fg}✗源码{/red-fg}';
   const i18nStatus = basicStatus.i18nExists ? '{green-fg}✓汉化{/green-fg}' : '{red-fg}✗汉化{/red-fg}';
   const binStatus = basicStatus.binExists ? '{green-fg}✓已编译{/green-fg}' : '{yellow-fg}○未编译{/yellow-fg}';
-  statusLines.push(`${srcStatus}  ${i18nStatus}  ${binStatus}`);
+  
+  let bunStatus = '{gray-fg}○ Bun未知{/gray-fg}';
+  if (basicStatus.currentBun) {
+    if (basicStatus.currentBun === basicStatus.recommendedBun) {
+      bunStatus = `{green-fg}✓ Bun v${basicStatus.currentBun}{/green-fg}`;
+    } else {
+      bunStatus = `{red-fg}! Bun v${basicStatus.currentBun} (推荐 ${basicStatus.recommendedBun}){/red-fg}`;
+    }
+  } else {
+    bunStatus = `{red-fg}✗ Bun未安装{/red-fg}`;
+  }
+
+  statusLines.push(`${srcStatus}  ${i18nStatus}  ${binStatus}  ${bunStatus}`);
 
   // 第三行：更新状态（异步加载）- 明确标注脚本和源码
   if (!updateStatus) {
@@ -178,6 +197,7 @@ async function showMainMenu() {
     { name: '[@] 智谱助手', value: 'helper', desc: '安装并启动智谱编码助手 (Coding Helper)，提供代码补全和解释功能。' },
     { name: '[G] GitHub仓库', value: 'github', desc: '在浏览器中打开项目仓库 (GitHub/Gitee)，查看源码或提交 Issue。' },
     { name: '[?] 检查环境', value: 'env', desc: '检查 Node.js, Bun, Git 等开发环境是否满足编译要求。' },
+    { name: '[B] 校准 Bun', value: 'fix-bun', desc: '强制将 Bun 版本校准为项目推荐版本 (v1.3.5)，解决兼容性问题。' },
     { name: '[U] 更新脚本', value: 'update-script', desc: '从 Git 更新本汉化管理脚本到最新版本。不影响 OpenCode 源码。' },
     { name: '[S] 显示配置', value: 'config', desc: '显示当前项目、源码、汉化、输出目录的路径配置信息。' },
     { name: '[X] 退出', value: 'exit', desc: '退出管理工具。' },
@@ -404,7 +424,22 @@ async function run() {
           await updateScript();
           return;
         case 'env':
-          await require('./env.js').checkEnvironment();
+          const envResult = await require('./env.js').checkEnvironment();
+          if (envResult.bunStatus && !envResult.bunStatus.match) {
+            console.log('');
+            const doFix = await gridConfirm(`检测到 Bun 版本不匹配，是否立即校准为 v${envResult.bunStatus.recommended}?`, true);
+            if (doFix) {
+              await require('./env.js').installBun(envResult.bunStatus.recommended);
+            }
+          }
+          break;
+        case 'fix-bun':
+          const { getRecommendedBunVersion, installBun } = require('./env.js');
+          const recVersion = getRecommendedBunVersion();
+          const confirmFix = await gridConfirm(`确认将 Bun 版本校准为 v${recVersion}?`, true);
+          if (confirmFix) {
+            await installBun(recVersion);
+          }
           break;
         case 'config':
           log('\n项目配置:', 'cyan');

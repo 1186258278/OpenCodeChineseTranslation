@@ -3,8 +3,65 @@
  * 检查 Node.js、Bun、Git 等必要工具
  */
 
-const { hasCommand, getCommandVersion, getPlatform } = require('./utils.js');
-const { step, success, error, warn, indent } = require('./colors.js');
+const path = require('path');
+const fs = require('fs');
+const { hasCommand, getCommandVersion, getPlatform, getOpencodeDir, readJSON, execLive } = require('./utils.js');
+const { step, success, error, warn, indent, log } = require('./colors.js');
+
+/**
+ * 安装/校准 Bun 版本
+ */
+async function installBun(version) {
+  step(`正在校准 Bun 版本到 v${version}...`);
+  
+  try {
+    // 优先使用 npm 安装，因为这是跨平台最一致的方式（且我们已经在 node 环境中）
+    const cmd = 'npm';
+    const args = ['install', '-g', `bun@${version}`];
+    
+    await execLive(cmd, args);
+    
+    // 验证安装结果
+    const current = getCurrentBunVersion();
+    if (current === version) {
+      success(`Bun 已成功校准到 v${version}`);
+      return true;
+    } else {
+      warn(`安装完成，但版本似乎未更新 (当前: ${current})。可能需要重启终端。`);
+      return true;
+    }
+  } catch (e) {
+    error(`安装失败: ${e.message}`);
+    return false;
+  }
+}
+
+/**
+ * 获取 OpenCode 推荐的 Bun 版本
+ */
+function getRecommendedBunVersion() {
+  try {
+    const opencodeDir = getOpencodeDir();
+    const pkgPath = path.join(opencodeDir, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+      const pkg = readJSON(pkgPath);
+      if (pkg.packageManager && typeof pkg.packageManager === 'string' && pkg.packageManager.startsWith('bun@')) {
+        return pkg.packageManager.split('@')[1];
+      }
+    }
+  } catch (e) {
+    // 忽略错误
+  }
+  return '1.3.5'; // 默认推荐版本
+}
+
+/**
+ * 获取本地 Bun 版本
+ */
+function getCurrentBunVersion() {
+  const version = getCommandVersion('bun', '--version');
+  return version ? version.trim() : null;
+}
 
 /**
  * 检查 Node.js 版本
@@ -81,6 +138,15 @@ async function checkEnvironment(options = {}) {
     step('检查编译环境');
   }
 
+  // 检查 Bun 版本匹配
+  const currentBun = getCurrentBunVersion();
+  const recommendedBun = getRecommendedBunVersion();
+  let bunVersionWarning = null;
+
+  if (currentBun && currentBun !== recommendedBun) {
+    bunVersionWarning = `Bun 版本不匹配: 当前 ${currentBun}, 推荐 ${recommendedBun}`;
+  }
+
   const results = {
     node: checkNode(),
     bun: checkBun(),
@@ -90,6 +156,10 @@ async function checkEnvironment(options = {}) {
 
   const missing = [];
   const warnings = [];
+  
+  if (bunVersionWarning) {
+    warnings.push(bunVersionWarning);
+  }
 
   // 检查结果
   if (!results.node.ok) {
@@ -127,12 +197,19 @@ async function checkEnvironment(options = {}) {
   if (missing.length > 0) {
     if (!silent) {
       error(`缺少必要工具: ${missing.join(', ')}`);
+      
+      // 显示具体错误信息（如版本不兼容）
+      if (results.bun?.error) {
+        warn(results.bun.error);
+      }
+
       warn('请安装后重试:');
       if (results.node?.ok === false) {
         indent('Node.js: https://nodejs.org/', 2);
       }
       if (results.bun?.ok === false) {
-        indent('Bun: npm install -g bun', 2);
+        const installCmd = isWindows ? 'npm install -g bun@1.3.5' : 'npm install -g bun';
+        indent(`Bun: ${installCmd}`, 2);
       }
       if (results.git?.ok === false) {
         indent('Git: https://git-scm.com/', 2);
@@ -142,10 +219,23 @@ async function checkEnvironment(options = {}) {
   }
 
   if (warnings.length > 0 && !silent) {
-    warn(`建议安装: ${warnings.join(', ')}`);
+    warn(`建议安装/注意: ${warnings.join(', ')}`);
+    
+    // 如果有 Bun 版本不匹配，且不在静默模式下，尝试交互式修复
+    // 注意：这里我们不引入 grid-menu 以避免可能的循环依赖，
+    // 而是只打印更显眼的提示和命令。
+    if (bunVersionWarning) {
+      const { isWindows } = getPlatform();
+      const installCmd = isWindows ? `npm install -g bun@${recommendedBun}` : `npm install -g bun@${recommendedBun}`;
+      console.log('');
+      warn(`! 检测到 Bun 版本不一致 (${currentBun} vs ${recommendedBun})`);
+      warn(`! Windows 上 Bun 1.3.6 存在已知问题，强烈建议使用推荐版本。`);
+      indent(`修复命令: ${installCmd}`, 2);
+      console.log('');
+    }
   }
 
-  return { ok: true, missing: [], warnings, results };
+  return { ok: true, missing: [], warnings, results, bunStatus: { current: currentBun, recommended: recommendedBun, match: currentBun === recommendedBun } };
 }
 
 /**
@@ -203,4 +293,7 @@ module.exports = {
   checkNpm,
   checkEnvironment,
   getBunPath,
+  getRecommendedBunVersion,
+  getCurrentBunVersion,
+  installBun
 };

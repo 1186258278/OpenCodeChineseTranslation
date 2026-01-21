@@ -1,6 +1,6 @@
 {
   "name": "opencodenpm",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "description": "OpenCode 中文汉化管理工具 - 跨平台统一版本",
   "main": "core/cli.js",
   "bin": {

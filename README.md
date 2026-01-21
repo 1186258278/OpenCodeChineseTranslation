@@ -25,7 +25,7 @@
 ## 界面预览
 
 <p align="center">
-  <img src="docs/0-0.png" alt="OpenCode 汉化管理工具主界面" width="800">
+  <img src="docs/0-1.png" alt="OpenCode 汉化管理工具主界面" width="800">
 </p>
 
 <p align="center">

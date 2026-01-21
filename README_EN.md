@@ -25,7 +25,7 @@ With the built-in `opencodenpm` management tool, you can easily update source co
 ## Screenshots
 
 <p align="center">
-  <img src="docs/0-0.png" alt="Management Tool Main Interface" width="800">
+  <img src="docs/0-1.png" alt="Management Tool Main Interface" width="800">
 </p>
 
 <p align="center">
