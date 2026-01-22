@@ -62,18 +62,39 @@ else
     echo -e "${CYAN}正在为您自动安装 Bun 环境...${NC}"
     
     # 自动安装 Bun
-    curl -fsSL https://bun.sh/install | bash
-    
-    # 配置 Bun 环境变量
-    export BUN_INSTALL="$HOME/.bun"
-    export PATH="$BUN_INSTALL/bin:$PATH"
-    
-    if has_cmd bun; then
-        echo -e "${GREEN}✓ Bun 安装成功 ($(bun -v))${NC}"
-        RUNTIME="bun"
+    echo -e "尝试安装 Bun..."
+    if curl -fsSL https://bun.sh/install | bash; then
+        export BUN_INSTALL="$HOME/.bun"
+        export PATH="$BUN_INSTALL/bin:$PATH"
+        
+        # 验证 Bun 是否可用 (检查 glibc 等问题)
+        if "$BUN_INSTALL/bin/bun" --version >/dev/null 2>&1; then
+            echo -e "${GREEN}✓ Bun 安装成功 ($("$BUN_INSTALL/bin/bun" --version))${NC}"
+            RUNTIME="bun"
+        else
+            echo -e "${YELLOW}Bun 安装成功但无法运行 (可能是系统 glibc 版本过低)。${NC}"
+            echo -e "${YELLOW}尝试回退安装 Node.js...${NC}"
+        fi
     else
-        echo -e "${RED}错误: Bun 安装失败。请手动安装 Node.js 或 Bun 后重试。${NC}"
-        exit 1
+        echo -e "${YELLOW}Bun 下载失败。尝试安装 Node.js...${NC}"
+    fi
+
+    # 如果 Bun 不可用，尝试安装 Node.js
+    if [ -z "$RUNTIME" ]; then
+        echo -e "正在安装 Node.js LTS..."
+        # 使用 nvm 安装 node (更通用)
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        
+        if command -v nvm >/dev/null 2>&1; then
+            nvm install --lts
+            RUNTIME="node"
+        else
+            echo -e "${RED}错误: 无法自动安装运行时环境。${NC}"
+            echo -e "${YELLOW}请您的系统版本较旧，请手动安装 Node.js (v18+) 后重试。${NC}"
+            exit 1
+        fi
     fi
 fi
 

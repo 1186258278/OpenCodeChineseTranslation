@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenCode 汉化发行版 - 全自动构建 | 每日更新</title>
+    <meta name="description" content="OpenCode 汉化发行版，每日自动同步官方最新代码，提供 Windows、macOS、Linux 全平台一键安装。">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#1e293b',
+                        dark: '#0f172a',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-text {
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-bg {
+            background-image: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        }
+    </style>
+</head>
+<body class="bg-dark text-white font-sans antialiased">
+
+    <!-- Navbar -->
+    <nav class="fixed w-full z-50 bg-dark/80 backdrop-blur-md border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-xl font-bold tracking-tight"><i class="fa-solid fa-code text-primary mr-2"></i>OpenCode <span class="text-gray-400 text-sm ml-1">汉化版</span></span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#features" class="hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition">特性</a>
+                        <a href="#install" class="hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition">安装</a>
+                        <a href="https://github.com/1186258278/OpenCodeChineseTranslation" target="_blank" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-full text-sm font-medium transition"><i class="fa-brands fa-github mr-2"></i>GitHub</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-bg pt-32 pb-20 px-4">
+        <div class="max-w-5xl mx-auto text-center">
+            <div class="inline-flex items-center px-3 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-medium mb-6">
+                <span class="flex h-2 w-2 rounded-full bg-blue-400 mr-2 animate-pulse"></span>
+                <span id="latest-version">v7.3.2</span> 已发布 · 同步官方最新特性
+            </div>
+            <h1 class="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight">
+                让 AI 编程<br>
+                <span class="gradient-text">再无语言障碍</span>
+            </h1>
+            <p class="text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+                OpenCode 全自动汉化发行版。每日同步上游源码，自动构建 Windows、macOS、Linux 中文版，提供开箱即用的一站式体验。
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="#install" class="bg-primary hover:bg-blue-600 text-white px-8 py-4 rounded-xl text-lg font-bold shadow-lg shadow-blue-500/20 transition transform hover:-translate-y-1 flex items-center justify-center">
+                    <i class="fa-solid fa-download mr-2"></i> 立即安装
+                </a>
+                <a href="https://github.com/1186258278/OpenCodeChineseTranslation" target="_blank" class="bg-gray-800 hover:bg-gray-700 text-white px-8 py-4 rounded-xl text-lg font-bold border border-gray-700 transition transform hover:-translate-y-1 flex items-center justify-center">
+                    <i class="fa-brands fa-github mr-2"></i> 查看源码
+                </a>
+            </div>
+            
+            <div class="mt-16 relative rounded-xl overflow-hidden shadow-2xl border border-gray-800 max-w-4xl mx-auto">
+                <div class="absolute inset-0 bg-gradient-to-t from-dark via-transparent to-transparent z-10"></div>
+                <img src="0-1.png" alt="OpenCode 界面预览" class="w-full">
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="py-20 bg-secondary/30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">为什么选择汉化发行版？</h2>
+                <p class="text-gray-400">我们不仅仅是翻译，更是为您提供了一套完整的自动化交付方案。</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="p-8 rounded-2xl bg-gray-800/50 border border-gray-700/50 hover:border-primary/50 transition duration-300">
+                    <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fa-solid fa-sync text-blue-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">每日自动更新</h3>
+                    <p class="text-gray-400 leading-relaxed">基于 GitHub Actions 的全自动构建流水线，每天定时拉取官方最新代码，让您第一时间体验新功能。</p>
+                </div>
+                <div class="p-8 rounded-2xl bg-gray-800/50 border border-gray-700/50 hover:border-primary/50 transition duration-300">
+                    <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fa-solid fa-language text-purple-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">深度汉化体验</h3>
+                    <p class="text-gray-400 leading-relaxed">覆盖 TUI 界面、对话框、提示信息及核心交互流程，消除语言障碍，让编码更专注。</p>
+                </div>
+                <div class="p-8 rounded-2xl bg-gray-800/50 border border-gray-700/50 hover:border-primary/50 transition duration-300">
+                    <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fa-solid fa-bolt text-green-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">国内网络优化</h3>
+                    <p class="text-gray-400 leading-relaxed">提供 CDN 加速的一键安装脚本，解决 GitHub 下载慢、连接失败等问题，畅享极速体验。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Install -->
+    <section id="install" class="py-20">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold mb-4">一键安装</h2>
+                <p class="text-gray-400">自动配置环境、下载最新版、设置全局命令。支持 Windows、macOS 和 Linux。</p>
+            </div>
+
+            <!-- Windows -->
+            <div class="mb-8">
+                <div class="flex items-center mb-2">
+                    <i class="fa-brands fa-windows text-blue-400 mr-2"></i>
+                    <span class="font-semibold text-gray-200">Windows (PowerShell)</span>
+                </div>
+                <div class="relative group">
+                    <pre class="bg-gray-900 p-4 rounded-lg border border-gray-700 overflow-x-auto text-sm text-gray-300 font-mono"><code>irm https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.ps1 | iex</code></pre>
+                    <button onclick="copyToClipboard('irm https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.ps1 | iex')" class="absolute right-2 top-2 bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs transition opacity-0 group-hover:opacity-100">
+                        复制
+                    </button>
+                </div>
+            </div>
+
+            <!-- macOS / Linux -->
+            <div>
+                <div class="flex items-center mb-2">
+                    <i class="fa-brands fa-apple text-gray-200 mr-2"></i>
+                    <i class="fa-brands fa-linux text-yellow-400 mr-2"></i>
+                    <span class="font-semibold text-gray-200">macOS / Linux</span>
+                </div>
+                <div class="relative group">
+                    <pre class="bg-gray-900 p-4 rounded-lg border border-gray-700 overflow-x-auto text-sm text-gray-300 font-mono"><code>curl -fsSL https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.sh | bash</code></pre>
+                    <button onclick="copyToClipboard('curl -fsSL https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.sh | bash')" class="absolute right-2 top-2 bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs transition opacity-0 group-hover:opacity-100">
+                        复制
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-secondary border-t border-gray-800 py-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-gray-500 text-sm mb-4">
+                本项目是 OpenCode 的社区汉化发行版，与 OpenCode 官方 (Anomaly Company) 无附属关系。<br>
+                仅供学习交流使用，遵循 MIT 开源协议。
+            </p>
+            <div class="flex justify-center space-x-6">
+                <a href="https://github.com/1186258278/OpenCodeChineseTranslation" class="text-gray-400 hover:text-white transition"><i class="fa-brands fa-github text-xl"></i></a>
+                <a href="https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation" class="text-gray-400 hover:text-red-500 transition"><i class="fa-solid fa-code text-xl"></i></a>
+            </div>
+            <p class="text-gray-600 text-xs mt-8">
+                &copy; 2026 OpenCode Chinese Translation Team.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('命令已复制到剪贴板！');
+            }).catch(err => {
+                console.error('无法复制: ', err);
+            });
+        }
+
+        // 动态获取 GitHub 数据
+        document.addEventListener('DOMContentLoaded', async () => {
+            const repo = '1186258278/OpenCodeChineseTranslation';
+            
+            // 获取 Stars
+            try {
+                const starResp = await fetch(`https://api.github.com/repos/${repo}`);
+                const starData = await starResp.json();
+                if (starData.stargazers_count) {
+                    const starEl = document.querySelector('.fa-github').parentElement;
+                    if (starEl) {
+                        starEl.innerHTML += ` <span class="ml-2 bg-gray-700 px-2 py-0.5 rounded text-xs">${starData.stargazers_count} stars</span>`;
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to fetch stars', e);
+            }
+
+            // 获取最新 Release
+            try {
+                const releaseResp = await fetch(`https://api.github.com/repos/${repo}/releases/latest`);
+                const releaseData = await releaseResp.json();
+                
+                if (releaseData.tag_name) {
+                    document.getElementById('latest-version').textContent = releaseData.tag_name;
+                    
+                    // 渲染更新日志
+                    const changelogContainer = document.getElementById('features');
+                    const changelogHTML = `
+                    <div class="max-w-4xl mx-auto mt-16 p-8 rounded-2xl bg-gray-800/30 border border-gray-700/50">
+                        <h3 class="text-2xl font-bold mb-6 flex items-center">
+                            <i class="fa-solid fa-rocket text-primary mr-3"></i>
+                            最新动态 (${releaseData.tag_name})
+                        </h3>
+                        <div class="prose prose-invert max-w-none text-gray-300 text-sm">
+                            <pre class="whitespace-pre-wrap font-sans">${releaseData.body.split('## 📦 下载文件')[0].replace(/#/g, '')}</pre>
+                        </div>
+                        <div class="mt-6 pt-6 border-t border-gray-700 text-right">
+                            <a href="${releaseData.html_url}" target="_blank" class="text-primary hover:text-blue-400 text-sm">查看完整发布说明 &rarr;</a>
+                        </div>
+                    </div>`;
+                    
+                    changelogContainer.insertAdjacentHTML('beforeend', changelogHTML);
+                }
+            } catch (e) {
+                console.error('Failed to fetch release', e);
+            }
+        });
+    </script>
+</body>
+</html>
