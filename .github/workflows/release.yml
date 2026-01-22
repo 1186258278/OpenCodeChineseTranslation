@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      build_binaries:
+        description: "Build OpenCode binaries (Windows/macOS/Linux)"
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: |
+          cd scripts
+          bun install
+
+      - name: Build and Package
+        id: package
+        run: |
+          ARGS="--all"
+          
+          # Check if build_binaries input is false (explicitly skipped)
+          if [ "${{ inputs.build_binaries }}" == "false" ]; then
+            echo "Skipping binaries build..."
+            ARGS="$ARGS --skip-binaries"
+          else
+            # If building binaries, ensure source is updated and applied
+            echo "Updating source code..."
+            node scripts/bin/opencodenpm update
+            
+            echo "Applying translation..."
+            # Apply translation to the source code before building
+            node scripts/bin/opencodenpm apply --no-check-variables --silent
+          fi
+          
+          echo "Running package command with args: $ARGS"
+          node scripts/bin/opencodenpm package $ARGS
+
+      - name: Get Release Info
+        id: release_info
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Find release notes
+          NOTES_FILE="releases/v$VERSION/RELEASE_NOTES.md"
+          if [ -f "$NOTES_FILE" ]; then
+            echo "Release notes found: $NOTES_FILE"
+            echo "notes_file=$NOTES_FILE" >> $GITHUB_OUTPUT
+          else
+            echo "Release notes not found, using default."
+            touch release_notes.md
+            echo "Release v$VERSION" > release_notes.md
+            echo "notes_file=release_notes.md" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: releases/v${{ steps.release_info.outputs.version }}/*
+          body_path: ${{ steps.release_info.outputs.notes_file }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

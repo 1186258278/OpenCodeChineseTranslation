@@ -1,183 +1,90 @@
-# 贡献指南 / Contributing Guide
+# 贡献指南 (Contributing Guide)
 
-感谢您考虑为 OpenCode 中文汉化项目做出贡献！
+感谢你对 OpenCode 中文汉化项目的关注和贡献！为了保持项目代码质量和协作效率，请遵守以下规范。
 
-Thank you for considering contributing to the OpenCode Chinese Localization project!
+## Git 提交规范 (Commit Convention)
 
----
+我们遵循 [Angular Commit Message Guidelines](https://github.com/angular/angular/blob/master/CONTRIBUTING.md#commit) 规范。
 
-[中文指南](#中文指南) | [English Guide](#english-guide)
-
----
-
-## 中文指南
-
-### 如何贡献
-
-#### 1. 报告问题 (Bug Reports)
-
-如果您发现了 Bug，请提交 Issue 并包含：
-
-- **问题描述**：清晰描述遇到的问题
-- **复现步骤**：如何触发问题
-- **预期行为**：您期望发生什么
-- **实际行为**：实际发生了什么
-- **环境信息**：
-  - 操作系统版本
-  - PowerShell 版本
-  - Bun 版本
-  - OpenCode 版本（commit hash）
-
-#### 2. 汉化改进
-
-**添加新的汉化模块：**
-
-1. 在 `opencode-i18n/` 对应目录下创建 JSON 文件
-2. 添加汉化映射（注意使用上下文安全模式）
-
-```json
-{
-  "file": "src/path/to/file.tsx",
-  "translations": [
-    {
-      "source": "<b>Original Text</b>",
-      "target": "<b>翻译文本</b>"
-    }
-  ]
-}
-```
-
-3. 在 `opencode-i18n/config.json` 中注册新模块
-
-**汉化安全原则：**
-
-- ✅ 使用完整上下文：`"<b>Todo</b>": "<b>待办</b>"`
-- ✅ 包含周围字符：`"title: \"Redo\"": "title: \"重做\""`
-- ❌ 避免单词替换：`"Todo": "待办"` (会破坏 `TodoItem` 等变量名)
-
-#### 3. 脚本优化
-
-如果您想改进 `scripts/opencode.ps1`：
-
-1. 遵循现有代码风格
-2. 添加适当的注释
-3. 测试所有受影响的功能
-4. 更新相关文档
-
-#### 4. 提交 Pull Request
-
-1. **Fork 本仓库**
-2. **创建特性分支**：`git checkout -b feature/your-feature`
-3. **提交更改**：`git commit -m "feat: 添加某功能"`
-4. **推送到分支**：`git push origin feature/your-feature`
-5. **创建 Pull Request**
-
-#### 提交消息格式
+每次提交信息 (Commit Message) 应该包含三个部分：`Header`, `Body` 和 `Footer`。
 
 ```
-<类型>(<范围>): <简短描述>
+<type>(<scope>): <subject>
+<BLANK LINE>
+<body>
+<BLANK LINE>
+<footer>
+```
 
-类型选择：
-- feat     新功能
-- fix      修复 Bug
-- docs     文档更新
-- refactor 重构（不改变功能）
-- style    代码风格（不影响功能）
-- chore    构建/工具链相关
+### 1. Header (必填)
+
+Header 只有一行，包含三个字段：`type` (必填), `scope` (选填), `subject` (必填)。
+
+#### Type (类型)
+
+必须是以下之一：
+
+*   **feat**: 新功能 (A new feature)
+*   **fix**: 修补 Bug (A bug fix)
+*   **docs**: 文档修改 (Documentation only changes)
+*   **style**: 代码格式修改，不影响逻辑 (Changes that do not affect the meaning of the code)
+*   **refactor**: 代码重构 (A code change that neither fixes a bug nor adds a feature)
+*   **perf**: 性能优化 (A code change that improves performance)
+*   **test**: 测试相关 (Adding missing tests or correcting existing tests)
+*   **build**: 构建系统或外部依赖变更 (Changes that affect the build system or external dependencies)
+*   **ci**: CI 配置文件或脚本修改 (Changes to our CI configuration files and scripts)
+*   **chore**: 其他不修改 src 或 test 的变动 (Other changes that don't modify src or test files)
+*   **revert**: 回滚提交 (Reverts a previous commit)
+
+#### Scope (范围)
+
+用于说明 commit 影响的范围，例如：
+*   `i18n`: 汉化文件相关
+*   `scripts`: 脚本工具相关
+*   `ui`: 界面相关
+*   `docs`: 文档相关
+
+#### Subject (主题)
+
+简短描述本次修改的内容。
+*   以动词开头，使用第一人称现在时 (如 "add", "change")
+*   首字母小写
+*   结尾不加句号 (.)
+
+### 示例
+
+```
+feat(i18n): add missing translations for search panel
+fix(scripts): fix bun cache clean command error
+docs: update contributing guide
+chore: upgrade dependencies
 ```
 
 ---
 
-## English Guide
+## 开发流程
 
-### How to Contribute
+1.  **Fork** 本仓库
+2.  创建一个新的分支 (`git checkout -b feat/my-feature`)
+3.  进行修改并提交 (`git commit -m 'feat: add my feature'`)
+4.  推送到你的分支 (`git push origin feat/my-feature`)
+5.  提交 **Pull Request**
 
-#### 1. Report Bugs
+## 汉化指南
 
-If you found a bug, please submit an issue with:
+*   所有的汉化 JSON 文件位于 `opencode-i18n/` 目录下。
+*   请确保 JSON 格式正确，不要包含注释。
+*   修改后建议运行 `opencodenpm verify` 进行验证。
 
-- **Description**: Clear description of the problem
-- **Steps to Reproduce**: How to trigger the issue
-- **Expected Behavior**: What you expected to happen
-- **Actual Behavior**: What actually happened
-- **Environment Info**:
-  - OS version
-  - PowerShell version
-  - Bun version
-  - OpenCode version (commit hash)
+## 版本管理
 
-#### 2. Translation Improvements
+如果你的提交涉及发布新版本，请修改 `scripts/core/version.js` 文件：
 
-**Adding new i18n modules:**
-
-1. Create a JSON file in `opencode-i18n/` corresponding directory
-2. Add translation mappings (use context-safe patterns)
-
-```json
-{
-  "file": "src/path/to/file.tsx",
-  "translations": [
-    {
-      "source": "<b>Original Text</b>",
-      "target": "<b>Translated Text</b>"
-    }
-  ]
-}
+```javascript
+const VERSION = '7.1.0';   // 修改为新版本号
+const VERSION_SHORT = 'v7.1'; // 修改为短版本号
 ```
 
-3. Register the new module in `opencode-i18n/config.json`
+修改后，CI/CD 系统在检测到 `v*` 标签时，会自动使用此版本号进行打包发布。
 
-**Translation Safety Principles:**
-
-- ✅ Use full context: `"<b>Todo</b>": "<b>待办</b>"`
-- ✅ Include surrounding chars: `"title: \"Redo\"": "title: \"重做\""`
-- ❌ Avoid single-word replacement: `"Todo": "待办"` (breaks `TodoItem` etc.)
-
-#### 3. Script Optimization
-
-If you want to improve `scripts/opencode.ps1`:
-
-1. Follow existing code style
-2. Add appropriate comments
-3. Test all affected features
-4. Update related documentation
-
-#### 4. Submit Pull Request
-
-1. **Fork** this repository
-2. **Create feature branch**: `git checkout -b feature/your-feature`
-3. **Commit changes**: `git commit -m "feat: add some feature"`
-4. **Push to branch**: `git push origin feature/your-feature`
-5. **Create Pull Request**
-
-#### Commit Message Format
-
-```
-<type>(<scope>): <short description>
-
-Types:
-- feat     New feature
-- fix      Bug fix
-- docs     Documentation update
-- refactor Refactoring (no functional change)
-- style    Code style (no functional change)
-- chore    Build/tooling related
-```
-
----
-
-## Code of Conduct
-
-- 尊重所有贡献者
-- 建设性讨论问题
-- 欢迎新手提问
-
-- Respect all contributors
-- Discuss issues constructively
-- Welcome questions from beginners
-
----
-
-## Questions?
-
-Join our discussions or open an issue!
+再次感谢你的贡献！

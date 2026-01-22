@@ -257,6 +257,108 @@ SHA256: ${pkg.sha256}
 }
 
 /**
+ * 打包汉化工具源码（便携版）
+ */
+async function packageSource(versionDir) {
+  step('打包汉化工具源码...');
+
+  const projectDir = getProjectDir();
+  const version = getI18nVersion();
+  const baseName = `opencode-i18n-tool-v${version}`;
+  const outputPath = path.join(versionDir, `${baseName}.zip`);
+  const { platform: osPlatform } = getPlatform();
+
+  // 需要打包的文件和目录
+  const includeList = [
+    'scripts',
+    'opencode-i18n',
+    'docs',
+    'package.json',
+    'package-lock.json',
+    'README.md',
+    'README_EN.md',
+    'LICENSE',
+    'CONTRIBUTING.md',
+    '.gitignore'
+  ];
+
+  // 创建临时目录
+  const tempDir = path.join(versionDir, 'temp', baseName);
+  if (fs.existsSync(tempDir)) {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(tempDir, { recursive: true });
+
+  // 复制文件
+  for (const item of includeList) {
+    const srcPath = path.join(projectDir, item);
+    const destPath = path.join(tempDir, item);
+
+    if (fs.existsSync(srcPath)) {
+      if (fs.statSync(srcPath).isDirectory()) {
+        // 递归复制目录，排除 node_modules
+        fs.cpSync(srcPath, destPath, { 
+          recursive: true, 
+          filter: (src) => !src.includes('node_modules') 
+        });
+      } else {
+        fs.copyFileSync(srcPath, destPath);
+      }
+    }
+  }
+
+  // 压缩
+  if (fs.existsSync(outputPath)) {
+    fs.unlinkSync(outputPath);
+  }
+
+  if (osPlatform === 'win32') {
+    try {
+      exec(
+        `powershell -Command "Compress-Archive -Path '${tempDir}\\*' -DestinationPath '${outputPath}' -Force"`,
+        { stdio: 'pipe' }
+      );
+    } catch (e) {
+      error(`压缩源码失败: ${e.message}`);
+      return null;
+    }
+  } else {
+    try {
+      exec(`cd "${tempDir}" && zip -r "${outputPath}" .`, { stdio: 'pipe' });
+    } catch (e) {
+      error(`压缩源码失败: ${e.message}`);
+      return null;
+    }
+  }
+
+  // 清理临时目录
+  fs.rmSync(tempDir, { recursive: true, force: true });
+  
+  // 清理 temp 目录（如果为空）
+  const tempBaseDir = path.join(versionDir, 'temp');
+  if (fs.existsSync(tempBaseDir) && fs.readdirSync(tempBaseDir).length === 0) {
+    fs.rmdirSync(tempBaseDir);
+  }
+
+  // 获取文件信息
+  const stats = fs.statSync(outputPath);
+  const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
+  const checksums = calculateChecksums(outputPath);
+
+  success(`打包源码完成: ${path.basename(outputPath)} (${sizeMB} MB)`);
+
+  return {
+    platform: 'source-tool',
+    filename: `${baseName}.zip`,
+    path: outputPath,
+    size: `${sizeMB} MB`,
+    bytes: stats.size,
+    md5: checksums.md5,
+    sha256: checksums.sha256,
+  };
+}
+
+/**
  * 打包单个平台
  */
 async function packagePlatform(platform, versionDir) {
@@ -396,6 +498,7 @@ async function packagePlatform(platform, versionDir) {
  * 打包所有平台
  */
 async function packageAll(options = {}) {
+  const { skipBinaries = false } = options;
   const platforms = ['windows-x64', 'darwin-arm64', 'linux-x64'];
   const version = getI18nVersion();
   const opencodeInfo = getOpencodeVersion();
@@ -413,14 +516,28 @@ async function packageAll(options = {}) {
   const packages = [];
   const results = [];
 
-  for (const targetPlatform of platforms) {
-    const result = await packagePlatform(targetPlatform, versionDir);
-    if (result) {
-      packages.push(result);
-      results.push({ platform: targetPlatform, success: true });
-    } else {
-      results.push({ platform: targetPlatform, success: false });
+  // 1. 打包汉化工具源码
+  const sourceResult = await packageSource(versionDir);
+  if (sourceResult) {
+    packages.push(sourceResult);
+    results.push({ platform: 'source-tool', success: true });
+  } else {
+    results.push({ platform: 'source-tool', success: false });
+  }
+
+  // 2. 打包三端二进制（除非跳过）
+  if (!skipBinaries) {
+    for (const targetPlatform of platforms) {
+      const result = await packagePlatform(targetPlatform, versionDir);
+      if (result) {
+        packages.push(result);
+        results.push({ platform: targetPlatform, success: true });
+      } else {
+        results.push({ platform: targetPlatform, success: false });
+      }
     }
+  } else {
+    log('已跳过二进制编译打包', 'yellow');
   }
 
   // 生成 Release Notes
@@ -478,10 +595,10 @@ async function packageAll(options = {}) {
  * 主运行函数
  */
 async function run(options = {}) {
-  const { platform = null, all = false } = options;
+  const { platform = null, all = false, skipBinaries = false } = options;
 
   if (all) {
-    return await packageAll(options);
+    return await packageAll({ skipBinaries });
   }
 
   if (platform) {

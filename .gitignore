@@ -12,6 +12,7 @@ opencode.exe
 *.exe
 *.log
 api_doc_mcp.log
+nul
 
 # ====================
 # Worktrees (开发隔离)

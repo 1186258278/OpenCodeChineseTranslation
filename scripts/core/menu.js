@@ -25,6 +25,7 @@ const rollbackCmd = require('../commands/rollback.js');
 const antigravityCmd = require('../commands/antigravity.js');
 const ohmyopencodeCmd = require('../commands/ohmyopencode.js');
 const githubCmd = require('../commands/github.js');
+const cleanCacheCmd = require('../commands/clean-cache.js');
 const { cleanRepo } = require('../core/git.js');
 
 /**
@@ -198,6 +199,7 @@ async function showMainMenu() {
     { name: '[G] GitHub仓库', value: 'github', desc: '在浏览器中打开项目仓库 (GitHub/Gitee)，查看源码或提交 Issue。' },
     { name: '[?] 检查环境', value: 'env', desc: '检查 Node.js, Bun, Git 等开发环境是否满足编译要求。' },
     { name: '[B] 校准 Bun', value: 'fix-bun', desc: '强制将 Bun 版本校准为项目推荐版本 (v1.3.5)，解决兼容性问题。' },
+    { name: '[C] 清理缓存', value: 'clean-cache', desc: '执行 bun pm cache rm 清理全局缓存，解决安装依赖报错问题。' },
     { name: '[U] 更新脚本', value: 'update-script', desc: '从 Git 更新本汉化管理脚本到最新版本。不影响 OpenCode 源码。' },
     { name: '[S] 显示配置', value: 'config', desc: '显示当前项目、源码、汉化、输出目录的路径配置信息。' },
     { name: '[X] 退出', value: 'exit', desc: '退出管理工具。' },
@@ -440,6 +442,9 @@ async function run() {
           if (confirmFix) {
             await installBun(recVersion);
           }
+          break;
+        case 'clean-cache':
+          await cleanCacheCmd.run({});
           break;
         case 'config':
           log('\n项目配置:', 'cyan');

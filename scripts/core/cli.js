@@ -196,6 +196,7 @@ function createCLI() {
     .description('打包 Releases (生成分发包)')
     .option('-p, --platform <platform>', '指定平台 (windows-x64, darwin-arm64, linux-x64)')
     .option('-a, --all', '打包所有平台')
+    .option('--skip-binaries', '跳过编译二进制文件（只打包汉化工具源码）')
     .action(async (options) => {
       try {
         const result = await packageCmd.run(options);
