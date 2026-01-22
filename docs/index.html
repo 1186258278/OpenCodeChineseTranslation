@@ -15,6 +15,7 @@
     <meta property="og:image" content="https://1186258278.github.io/OpenCodeChineseTranslation/docs/0-1.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         tailwind.config = {
@@ -34,41 +35,82 @@
         }
     </script>
     <style>
-        body { font-family: 'Inter', system-ui, sans-serif; background-color: #020617; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background-color: #020617;
+            background-image: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #020617 50%);
+        }
+        
+        /* Advanced Glassmorphism */
         .glass {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .glass-card {
             background: rgba(30, 41, 59, 0.4);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
         }
-        .text-glow { text-shadow: 0 0 30px rgba(99, 102, 241, 0.6); }
-        #canvas-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+
+        .text-glow { text-shadow: 0 0 40px rgba(99, 102, 241, 0.5); }
         
-        /* Browser Window Style */
+        #canvas-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0.6; }
+        
+        /* Premium Browser Mockup */
         .browser-mockup {
-            border-radius: 12px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            background: #1e293b;
-            border: 1px solid #334155;
-            overflow: hidden;
-        }
-        .browser-header {
+            border-radius: 16px;
+            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.6);
             background: #0f172a;
-            padding: 12px 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+            transform: perspective(1000px) rotateX(1deg);
+            transition: transform 0.5s ease;
+        }
+        .browser-mockup:hover { transform: perspective(1000px) rotateX(0deg); }
+        
+        .browser-header {
+            background: rgba(15, 23, 42, 0.9);
+            padding: 14px 20px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            border-bottom: 1px solid #334155;
+            gap: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        .dot { width: 12px; height: 12px; border-radius: 50%; }
-        .dot-red { background: #ef4444; }
-        .dot-yellow { background: #eab308; }
-        .dot-green { background: #22c55e; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 1px 2px rgba(0,0,0,0.2); }
+        .dot-red { background: #ff5f56; }
+        .dot-yellow { background: #ffbd2e; }
+        .dot-green { background: #27c93f; }
         
         .tab-btn.active {
-            background: rgba(99, 102, 241, 0.1);
-            color: #818cf8;
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
             border-color: #6366f1;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
         }
+
+        /* Downloading Animation */
+        @keyframes downloadPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.98); opacity: 0.8; }
+            100% { transform: scale(1); }
+        }
+        .downloading {
+            animation: downloadPulse 1.5s infinite;
+            pointer-events: none;
+            cursor: wait;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
 <body class="text-gray-100 antialiased selection:bg-primary/30 selection:text-white">
@@ -114,16 +156,143 @@
                 <br class="hidden md:block">消除语言障碍，提供开箱即用的一站式 AI 编程体验。
             </p>
             
-            <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <a href="#install" class="group bg-primary hover:bg-blue-600 text-white px-8 py-3.5 rounded-xl text-base font-bold shadow-lg shadow-primary/25 transition transform hover:-translate-y-0.5 flex items-center justify-center">
-                    <i class="fa-solid fa-download mr-2"></i> 立即安装
-                </a>
-                <a href="https://github.com/1186258278/OpenCodeChineseTranslation" target="_blank" class="glass hover:bg-white/10 text-white px-8 py-3.5 rounded-xl text-base font-bold transition transform hover:-translate-y-0.5 flex items-center justify-center">
-                    <i class="fa-brands fa-github mr-2"></i> 源码仓库
-                </a>
+        </div>
+    </section>
+
+    <!-- Download Dashboard -->
+    <section id="install" class="relative -mt-10 px-4 z-20 pb-20">
+        <div class="max-w-5xl mx-auto bg-slate-900/80 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl shadow-primary/5 overflow-hidden ring-1 ring-white/5 transition-all duration-300 hover:shadow-primary/10">
+            <!-- Header -->
+            <div class="border-b border-white/5 p-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white/[0.02]">
+                <div class="flex items-center gap-4">
+                    <div class="bg-green-500/10 text-green-400 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider border border-green-500/20 flex items-center gap-2 shadow-[0_0_10px_rgba(34,197,94,0.2)]">
+                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        LATEST BUILD
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                            <span id="dash-version">v7.3.2</span>
+                            <span class="text-xs font-normal text-gray-400 bg-white/10 px-2 py-0.5 rounded" id="dash-date">...</span>
+                        </h3>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <a href="https://github.com/1186258278/OpenCodeChineseTranslation" target="_blank" class="text-sm bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition flex items-center gap-2">
+                        <i class="fa-brands fa-github"></i> GitHub
+                    </a>
+                    <a href="https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation" target="_blank" class="text-sm bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-lg transition flex items-center gap-2">
+                        <i class="fa-solid fa-code-branch"></i> Gitee
+                    </a>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="p-0">
+                <div class="flex border-b border-white/10 bg-black/20">
+                    <button onclick="switchInstallTab('script')" id="tab-btn-script" class="flex-1 py-4 text-sm font-medium text-white border-b-2 border-primary bg-white/5 transition">
+                        <i class="fa-solid fa-terminal mr-2"></i> 脚本安装 (推荐)
+                    </button>
+                    <button onclick="switchInstallTab('offline')" id="tab-btn-offline" class="flex-1 py-4 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-white hover:bg-white/5 transition">
+                        <i class="fa-solid fa-box-archive mr-2"></i> 离线包下载
+                    </button>
+                </div>
+
+                <!-- Script Install -->
+                <div id="tab-content-script" class="p-6 md:p-8">
+                    <div class="flex justify-center mb-6">
+                        <div class="bg-black/40 p-1 rounded-lg flex text-xs font-medium">
+                            <button onclick="setSource('github')" id="src-btn-github" class="px-4 py-1.5 rounded-md bg-primary text-white shadow-sm transition">GitHub 源 (默认)</button>
+                            <button onclick="setSource('gitee')" id="src-btn-gitee" class="px-4 py-1.5 rounded-md text-gray-400 hover:text-white transition">Gitee 源 (国内加速)</button>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-6 max-w-3xl mx-auto">
+                        <!-- Windows -->
+                        <div class="bg-black/30 rounded-xl border border-white/5 overflow-hidden group hover:border-blue-500/30 transition">
+                            <div class="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-brands fa-windows text-blue-400 text-lg"></i>
+                                    <span class="font-medium text-sm">Windows (PowerShell)</span>
+                                </div>
+                            </div>
+                            <div class="p-4 relative group">
+                                <code id="cmd-win" class="text-xs md:text-sm text-blue-200 font-mono break-all block pr-16 leading-relaxed">irm https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.ps1 -OutFile $env:TEMP\opencode-install.ps1; & $env:TEMP\opencode-install.ps1</code>
+                                <button onclick="copyText('cmd-win', this)" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition backdrop-blur-sm border border-white/5">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- macOS/Linux -->
+                        <div class="bg-black/30 rounded-xl border border-white/5 overflow-hidden group hover:border-yellow-500/30 transition">
+                            <div class="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex gap-2 text-lg">
+                                        <i class="fa-brands fa-apple text-gray-200"></i>
+                                        <i class="fa-brands fa-linux text-yellow-400"></i>
+                                    </div>
+                                    <span class="font-medium text-sm">macOS / Linux (Bash)</span>
+                                </div>
+                            </div>
+                            <div class="p-4 relative group">
+                                <code id="cmd-unix" class="text-xs md:text-sm text-yellow-200 font-mono break-all block pr-16 leading-relaxed">curl -fsSL https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.sh | bash</code>
+                                <button onclick="copyText('cmd-unix', this)" class="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition backdrop-blur-sm border border-white/5">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Offline Packages -->
+                <div id="tab-content-offline" class="hidden p-6 md:p-8">
+                    <div id="loading-assets" class="text-center py-10 text-gray-400">
+                        <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-3 text-primary"></i>
+                        <p>正在获取最新构建资源...</p>
+                    </div>
+                    <div id="assets-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6 hidden">
+                        <!-- Assets will be injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Release Notes Toggle -->
+            <div class="border-t border-white/10 bg-white/[0.02]">
+                <button onclick="toggleNotes()" id="notes-toggle" class="w-full py-3 text-xs font-medium text-gray-500 hover:text-white transition flex items-center justify-center gap-2 group">
+                    <span>查看更新日志</span>
+                    <i class="fa-solid fa-chevron-down group-hover:translate-y-0.5 transition-transform"></i>
+                </button>
+                <div id="release-notes" class="hidden border-t border-white/5 bg-black/40">
+                    <div class="p-6 md:p-8 prose prose-invert prose-sm max-w-none text-gray-300" id="notes-content">
+                        <!-- Notes content -->
+                    </div>
+                </div>
             </div>
         </div>
     </section>
+
+    <!-- Checksums Modal -->
+    <div id="checksums-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeChecksums()"></div>
+        <div class="relative bg-slate-900 border border-white/10 rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b border-white/10 bg-white/5">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-file-shield text-green-400"></i> SHA256 校验和
+                </h3>
+                <button onclick="closeChecksums()" class="text-gray-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-0 overflow-auto bg-black/50">
+                <pre id="checksums-content" class="text-xs text-gray-300 font-mono p-4 whitespace-pre-wrap break-all"></pre>
+            </div>
+            <div class="p-4 border-t border-white/10 bg-white/5 flex justify-end">
+                <button onclick="copyChecksums()" class="bg-primary hover:bg-blue-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition">
+                    <i class="fa-regular fa-copy mr-1"></i> 复制全部
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Gallery (Optimized) -->
     <section id="gallery" class="py-20 px-4">
@@ -178,60 +347,6 @@
                     <h3 class="text-lg font-bold mb-2">国内加速</h3>
                     <p class="text-gray-400 text-sm leading-relaxed">内置 CDN 加速逻辑，智能切换下载镜像，彻底解决国内网络环境下的安装难题。</p>
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Install -->
-    <section id="install" class="py-20">
-        <div class="max-w-4xl mx-auto px-4">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl font-bold mb-4">开始使用</h2>
-                <p class="text-gray-400">选择您的系统，复制命令到终端执行即可。</p>
-            </div>
-
-            <div class="grid gap-6">
-                <!-- Windows -->
-                <div class="bg-slate-900/80 rounded-xl border border-slate-700 overflow-hidden group hover:border-blue-500/50 transition">
-                    <div class="flex items-center justify-between px-5 py-3 bg-white/5 border-b border-white/5">
-                        <div class="flex items-center gap-3">
-                            <i class="fa-brands fa-windows text-blue-400 text-xl"></i>
-                            <span class="font-medium">Windows (PowerShell)</span>
-                        </div>
-                        <span class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">推荐</span>
-                    </div>
-                    <div class="p-5 relative">
-                        <code class="text-sm text-blue-200 font-mono break-all block pr-20">irm https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.ps1 -OutFile $env:TEMP\opencode-install.ps1; & $env:TEMP\opencode-install.ps1</code>
-                        <button onclick="copyCmd(this, 'win')" class="absolute right-4 top-4 bg-slate-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-2">
-                            <i class="fa-regular fa-copy"></i> 复制
-                        </button>
-                    </div>
-                </div>
-
-                <!-- macOS/Linux -->
-                <div class="bg-slate-900/80 rounded-xl border border-slate-700 overflow-hidden group hover:border-yellow-500/50 transition">
-                    <div class="flex items-center justify-between px-5 py-3 bg-white/5 border-b border-white/5">
-                        <div class="flex items-center gap-3">
-                            <div class="flex gap-2 text-xl">
-                                <i class="fa-brands fa-apple text-gray-200"></i>
-                                <i class="fa-brands fa-linux text-yellow-400"></i>
-                            </div>
-                            <span class="font-medium">macOS / Linux</span>
-                        </div>
-                    </div>
-                    <div class="p-5 relative">
-                        <code class="text-sm text-yellow-200 font-mono break-all block pr-20">curl -fsSL https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.sh | bash</code>
-                        <button onclick="copyCmd(this, 'unix')" class="absolute right-4 top-4 bg-slate-700 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-2">
-                            <i class="fa-regular fa-copy"></i> 复制
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="mt-8 text-center">
-                <a href="https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest" target="_blank" class="text-sm text-gray-500 hover:text-white transition border-b border-gray-700 hover:border-white pb-0.5">
-                    不想使用脚本？点此下载离线安装包
-                </a>
             </div>
         </div>
     </section>
@@ -356,18 +471,240 @@
             });
         }
 
-        // Dynamic Data
-        document.addEventListener('DOMContentLoaded', async () => {
-            const repo = '1186258278/OpenCodeChineseTranslation';
+        // Download Animation
+        function startDownload(btn) {
+            if (btn.classList.contains('downloading')) return;
+            
+            const originalContent = btn.innerHTML;
+            btn.classList.add('downloading');
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 正在请求...';
+            
+            // Revert after 3s (just for visual feedback)
+            setTimeout(() => {
+                btn.classList.remove('downloading');
+                btn.innerHTML = originalContent;
+            }, 3000);
+        }
+
+        // --- Dashboard Logic ---
+
+        // State
+        let currentSource = 'github';
+        const repo = '1186258278/OpenCodeChineseTranslation';
+        let releaseData = null;
+
+        // Command Templates
+        const cmds = {
+            github: {
+                win: `irm https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.ps1 -OutFile $env:TEMP\\opencode-install.ps1; & $env:TEMP\\opencode-install.ps1`,
+                unix: `curl -fsSL https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.sh | bash`
+            },
+            gitee: {
+                win: `irm https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation/raw/main/install.ps1 -OutFile $env:TEMP\\opencode-install.ps1; & $env:TEMP\\opencode-install.ps1`,
+                unix: `curl -fsSL https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation/raw/main/install.sh | bash`
+            }
+        };
+
+        // Tab Switching
+        function switchInstallTab(tab) {
+            document.getElementById('tab-content-script').classList.add('hidden');
+            document.getElementById('tab-content-offline').classList.add('hidden');
+            document.getElementById(`tab-content-${tab}`).classList.remove('hidden');
+
+            const btnScript = document.getElementById('tab-btn-script');
+            const btnOffline = document.getElementById('tab-btn-offline');
+
+            // Reset styles
+            [btnScript, btnOffline].forEach(btn => {
+                btn.className = 'flex-1 py-4 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-white hover:bg-white/5 transition';
+            });
+
+            // Active style
+            const activeBtn = tab === 'script' ? btnScript : btnOffline;
+            activeBtn.className = 'flex-1 py-4 text-sm font-medium text-white border-b-2 border-primary bg-white/5 transition';
+
+            // Load assets if needed
+            if (tab === 'offline' && !document.getElementById('assets-grid').innerHTML.trim()) {
+                renderAssets();
+            }
+        }
+
+        // Source Switching
+        function setSource(source) {
+            currentSource = source;
+            
+            // Update buttons
+            document.getElementById('src-btn-github').className = source === 'github' 
+                ? 'px-4 py-1.5 rounded-md bg-primary text-white shadow-sm transition' 
+                : 'px-4 py-1.5 rounded-md text-gray-400 hover:text-white transition';
+            
+            document.getElementById('src-btn-gitee').className = source === 'gitee' 
+                ? 'px-4 py-1.5 rounded-md bg-red-600 text-white shadow-sm transition' 
+                : 'px-4 py-1.5 rounded-md text-gray-400 hover:text-white transition';
+
+            // Update commands
+            document.getElementById('cmd-win').textContent = cmds[source].win;
+            document.getElementById('cmd-unix').textContent = cmds[source].unix;
+        }
+
+        // Clipboard
+        function copyText(elementId, btn) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const icon = btn.querySelector('i');
+                const originalClass = icon.className;
+                
+                icon.className = 'fa-solid fa-check';
+                btn.classList.add('bg-green-500/20', 'text-green-400', 'border-green-500/20');
+                btn.classList.remove('bg-white/10');
+                
+                setTimeout(() => {
+                    icon.className = 'fa-regular fa-copy';
+                    btn.classList.remove('bg-green-500/20', 'text-green-400', 'border-green-500/20');
+                    btn.classList.add('bg-white/10');
+                }, 2000);
+            });
+        }
+
+        // Release Notes Toggle
+        function toggleNotes() {
+            const notes = document.getElementById('release-notes');
+            const icon = document.querySelector('#notes-toggle i');
+            
+            if (notes.classList.contains('hidden')) {
+                notes.classList.remove('hidden');
+                icon.className = 'fa-solid fa-chevron-up';
+            } else {
+                notes.classList.add('hidden');
+                icon.className = 'fa-solid fa-chevron-down';
+            }
+        }
+
+        // Render Assets
+        function renderAssets() {
+            if (!releaseData || !releaseData.assets) return;
+
+            const grid = document.getElementById('assets-grid');
+            const loading = document.getElementById('loading-assets');
+            
+            loading.classList.add('hidden');
+            grid.classList.remove('hidden');
+            grid.innerHTML = '';
+
+            const platforms = [
+                { id: 'windows-x64', icon: 'fa-windows', name: 'Windows x64', color: 'text-blue-400' },
+                { id: 'darwin-arm64', icon: 'fa-apple', name: 'macOS (Apple Silicon)', color: 'text-white' },
+                { id: 'linux-x64', icon: 'fa-linux', name: 'Linux x64', color: 'text-yellow-400' }
+            ];
+
+            platforms.forEach(p => {
+                const asset = releaseData.assets.find(a => a.name.includes(p.id) && a.name.endsWith('.zip'));
+                if (asset) {
+                    const sizeMB = (asset.size / 1024 / 1024).toFixed(1);
+                    const html = `
+                        <div class="bg-black/30 rounded-xl border border-white/5 p-5 hover:border-primary/30 transition group relative glass-card">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
+                                        <i class="fa-brands ${p.icon} ${p.color} text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-sm text-gray-200">${p.name}</h4>
+                                        <p class="text-xs text-gray-500">${sizeMB} MB</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col gap-2">
+                                <a href="${asset.browser_download_url}" onclick="startDownload(this)" class="w-full bg-primary hover:bg-blue-600 text-white text-xs font-bold py-3 rounded-lg text-center transition shadow-lg shadow-primary/20 flex items-center justify-center gap-2 group-hover:scale-[1.02]">
+                                    <i class="fa-solid fa-download"></i> <span>立即下载</span>
+                                </a>
+                                <div class="text-[10px] text-gray-500 text-center font-mono">GitHub Official Source</div>
+                            </div>
+                        </div>
+                    `;
+                    grid.innerHTML += html;
+                }
+            });
+            
+            // Add Checksums
+            const checksums = releaseData.assets.find(a => a.name === 'checksums.txt');
+            if (checksums) {
+                 grid.innerHTML += `
+                    <div class="md:col-span-3 flex justify-center mt-2">
+                        <button onclick="showChecksums('${checksums.browser_download_url}')" class="text-xs text-gray-500 hover:text-white flex items-center gap-1 transition group">
+                            <i class="fa-solid fa-file-shield group-hover:text-green-400"></i> 查看 SHA256 校验和文件
+                        </button>
+                    </div>
+                 `;
+            }
+        }
+
+        // Checksums Logic
+        async function showChecksums(url) {
+            const modal = document.getElementById('checksums-modal');
+            const content = document.getElementById('checksums-content');
+            
+            modal.classList.remove('hidden');
+            content.textContent = '正在加载校验和...';
             
             try {
-                const releaseResp = await fetch(`https://api.github.com/repos/${repo}/releases/latest`);
-                const releaseData = await releaseResp.json();
+                // Try direct fetch (User requested no third-party proxies)
+                // Note: This might fail due to CORS or Network issues in CN.
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error('Network error');
+                const text = await resp.text();
+                content.textContent = text;
+            } catch (e) {
+                content.textContent = '无法在线预览 (可能是网络限制或跨域拦截)。\n建议您直接下载查看。';
+                // Fallback to direct link
+                content.innerHTML += `\n\n<a href="${url}" target="_blank" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm text-white inline-flex items-center gap-2 transition mt-2"><i class="fa-solid fa-download"></i> 下载校验文件</a>`;
+            }
+        }
+
+        function closeChecksums() {
+            document.getElementById('checksums-modal').classList.add('hidden');
+        }
+
+        function copyChecksums() {
+            const text = document.getElementById('checksums-content').textContent;
+            navigator.clipboard.writeText(text);
+        }
+
+        // Init Data
+        (async () => {
+            try {
+                const resp = await fetch(`https://api.github.com/repos/${repo}/releases/latest`);
+                releaseData = await resp.json();
+                
+                // Update Hero Badge
                 if (releaseData.tag_name) {
                     document.getElementById('latest-version').textContent = releaseData.tag_name;
+                    document.getElementById('dash-version').textContent = releaseData.tag_name;
                 }
-            } catch (e) {}
-        });
+
+                // Update Date
+                if (releaseData.published_at) {
+                    const date = new Date(releaseData.published_at);
+                    const timeStr = date.toLocaleString('zh-CN', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    document.getElementById('dash-date').textContent = `${timeStr} 构建`;
+                }
+
+                // Update Release Notes (using Marked.js)
+                if (releaseData.body) {
+                    const html = marked.parse(releaseData.body);
+                    document.getElementById('notes-content').innerHTML = html;
+                }
+
+                // Pre-render assets so they are ready when tab is switched
+                renderAssets();
+
+            } catch (e) {
+                console.error('Failed to fetch release data:', e);
+                // Show error state in offline tab
+                document.getElementById('loading-assets').innerHTML = `<p class="text-red-400">获取版本信息失败，请刷新重试</p>`;
+            }
+        })();
     </script>
 </body>
 </html>

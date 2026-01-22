@@ -47,19 +47,35 @@
 
 ### 2. 一键安装 (推荐)
 
-使用我们提供的 CDN 加速脚本，自动检测系统环境并安装最新汉化版。
+使用我们提供的自动安装脚本，自动检测系统环境、配置加速镜像并安装最新汉化版。
 
-**Linux / macOS**
-```bash
-curl -fsSL https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.sh | bash
-```
+#### 方式 A：默认源 (GitHub / jsDelivr)
+适用于网络环境良好的用户。
 
 **Windows (PowerShell)**
 ```powershell
 irm https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.ps1 -OutFile $env:TEMP\opencode-install.ps1; & $env:TEMP\opencode-install.ps1
 ```
 
-> 💡 **提示**: 以上命令使用了 jsDelivr CDN 加速，解决了 GitHub `raw.githubusercontent.com` 在国内访问不稳定的问题。
+**Linux / macOS**
+```bash
+curl -fsSL https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.sh | bash
+```
+
+#### 方式 B：国内镜像源 (Gitee) - 极速
+适用于 GitHub 访问受限或下载速度慢的用户。
+
+**Windows (PowerShell)**
+```powershell
+irm https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation/raw/master/install.ps1 -OutFile $env:TEMP\opencode-install.ps1; & $env:TEMP\opencode-install.ps1
+```
+
+**Linux / macOS**
+```bash
+curl -fsSL https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation/raw/master/install.sh | bash
+```
+
+> 💡 **提示**: 安装脚本内置了下载加速逻辑。如果仍遇到网络问题，请访问 [项目官网](https://1186258278.github.io/OpenCodeChineseTranslation/) 直接下载离线安装包。
 
 ### 3. 手动下载
 

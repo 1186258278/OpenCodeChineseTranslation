@@ -3,7 +3,7 @@
  * 统一管理项目版本号，一处修改，全局生效
  */
 
-const VERSION = '7.3.2';
+const VERSION = '7.3.3';
 const VERSION_SHORT = 'v7.3';
 const APP_NAME = 'OpenCode 汉化管理工具';
 

@@ -27,6 +27,24 @@ has_cmd() {
     command -v "$1" &> /dev/null
 }
 
+# 检查 glibc 版本 (防止在 CentOS 7 等老系统上尝试运行不兼容的 Node)
+check_glibc() {
+    if ldd --version >/dev/null 2>&1; then
+        GLIBC_VER=$(ldd --version | head -n1 | awk '{print $NF}')
+        # 简单的版本比较逻辑：需要 >= 2.28 才能运行官方 Node 18+
+        # 这是一个粗略检查，主要拦截 2.17 (CentOS 7)
+        if [[ "$GLIBC_VER" == "2.17" || "$GLIBC_VER" < "2.28" ]]; then
+            echo -e "${RED}错误: 检测到系统 glibc 版本过低 ($GLIBC_VER)。${NC}"
+            echo -e "${YELLOW}现代 Node.js (v18+) 需要 glibc 2.28 或更高版本。${NC}"
+            echo -e "${YELLOW}请升级您的操作系统 (推荐 Ubuntu 20.04+, CentOS 8+, Debian 10+)。${NC}"
+            echo -e "${YELLOW}或者使用 Docker 运行此工具。${NC}"
+            exit 1
+        fi
+    fi
+}
+
+check_glibc
+
 if ! has_cmd curl; then
     echo -e "${RED}错误: 未找到 curl。请先安装: sudo apt install curl 或 brew install curl${NC}"
     exit 1
@@ -81,14 +99,16 @@ else
 
     # 如果 Bun 不可用，尝试安装 Node.js
     if [ -z "$RUNTIME" ]; then
-        echo -e "正在安装 Node.js LTS..."
+        echo -e "正在安装 Node.js (v20)..."
         # 使用 nvm 安装 node (更通用)
+        # 使用 Gitee 镜像加速 nvm 安装脚本 (可选，这里先用官方)
         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
         
         if command -v nvm >/dev/null 2>&1; then
-            nvm install --lts
+            # 锁定安装 Node 20 (兼容性较好)，而不是最新的 v24
+            nvm install 20
             
             # 再次验证 Node.js 是否可用
             if node -v >/dev/null 2>&1; then
@@ -131,7 +151,8 @@ echo -e "下载地址: $ZIP_URL"
 if curl -L --progress-bar -o "$TEMP_ZIP" "$ZIP_URL"; then
     echo -e "${GREEN}下载成功!${NC}"
 else
-    echo -e "${RED}下载失败! 请检查网络连接或版本号。${NC}"
+    echo -e "${RED}下载失败! 请检查网络连接。${NC}"
+    echo -e "${YELLOW}如果您在中国大陆，请尝试使用 Gitee 源安装脚本，或直接下载离线包。${NC}"
     exit 1
 fi
 

@@ -78,17 +78,9 @@ try {
     Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip
     Write-Color "下载成功!" "Green"
 } catch {
-    Write-Color "GitHub 直接下载失败，尝试使用加速镜像..." "Yellow"
-    try {
-        # 使用 ghproxy 镜像加速
-        $mirrorUrl = "https://mirror.ghproxy.com/" + $zipUrl
-        Invoke-WebRequest -Uri $mirrorUrl -OutFile $tempZip
-        Write-Color "镜像下载成功!" "Green"
-    } catch {
-        Write-Color "下载失败! 请检查网络连接或尝试手动下载。" "Red"
-        Write-Color "手动下载链接: $zipUrl" "Gray"
-        exit 1
-    }
+    Write-Color "下载失败! 请检查网络连接。" "Red"
+    Write-Color "如果您在中国大陆，请尝试访问官网下载离线安装包。" "Gray"
+    exit 1
 }
 
 # 4. 解压安装
@@ -123,7 +115,17 @@ if ($runtime -eq "bun") {
 } else {
     # 使用淘宝镜像加速 npm 安装
     Write-Color "正在使用 npm 镜像源安装依赖..." "Gray"
-    npm install --production --registry=https://registry.npmmirror.com
+    try {
+        npm install --production --registry=https://registry.npmmirror.com
+    } catch {
+        Write-Color "`n[!] 依赖安装失败。" "Red"
+        Write-Color "提示: 检测到网络错误。这通常是因为您的 npm 配置了代理但无法连接 (ECONNREFUSED)。" "Yellow"
+        Write-Color "请尝试运行以下命令清除代理配置后重试:" "Gray"
+        Write-Color "  npm config delete proxy" "Cyan"
+        Write-Color "  npm config delete https-proxy" "Cyan"
+        Write-Color "或者检查您的代理软件 (Clash 等) 是否开启了 7890/7897 端口。" "Gray"
+        exit 1
+    }
 }
 
 # 链接全局命令 (对于 Windows，我们需要创建一个 cmd wrapper)
