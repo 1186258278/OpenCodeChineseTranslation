@@ -1,6 +1,9 @@
-# OpenCode 汉化工具一键安装脚本 (Windows)
+﻿# OpenCode 汉化工具一键安装脚本 (Windows)
 
 $ErrorActionPreference = "Stop"
+
+# 强制设置控制台编码为 UTF-8，解决乱码问题
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 # 颜色输出
 function Write-Color($text, $color) {
