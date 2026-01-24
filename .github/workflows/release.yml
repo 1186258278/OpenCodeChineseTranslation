@@ -174,7 +174,9 @@ jobs:
 
       - name: Get Build Timestamp
         id: date
-        run: echo "timestamp=$(date -u +'%Y-%m-%d %H:%M UTC')" >> $GITHUB_OUTPUT
+        env:
+          TZ: 'Asia/Shanghai'
+        run: echo "timestamp=$(date +'%Y-%m-%d %H:%M CST')" >> $GITHUB_OUTPUT
 
       - name: Download CLI Artifacts
         uses: actions/download-artifact@v4
