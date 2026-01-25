@@ -31,9 +31,17 @@ func init() {
 func runVerify(detailed, dryRun bool) {
 	fmt.Println("\n▶ 验证汉化配置")
 
-	i18nDir, err := core.GetI18nDir()
+	// 1. 初始化 I18n
+	i18n, err := core.NewI18n()
 	if err != nil {
-		fmt.Printf("✗ 无法获取汉化目录: %v\n", err)
+		fmt.Printf("✗ 初始化失败: %v\n", err)
+		return
+	}
+
+	// 2. 加载配置（自动处理内嵌资源）
+	configs, err := i18n.LoadConfig()
+	if err != nil {
+		fmt.Printf("✗ 加载配置失败: %v\n", err)
 		return
 	}
 
@@ -43,35 +51,17 @@ func runVerify(detailed, dryRun bool) {
 		return
 	}
 
-	// 1. 验证配置完整性
+	// 3. 验证配置完整性
 	fmt.Println("\n[1/4] 验证配置完整性...")
 
-	configFiles, err := findJSONFiles(i18nDir)
-	if err != nil {
-		fmt.Printf("✗ 无法读取配置目录: %v\n", err)
-		return
-	}
-
-	totalConfigs := len(configFiles)
+	totalConfigs := len(configs)
 	totalReplacements := 0
 	categoryStats := make(map[string]int)
 
-	for _, file := range configFiles {
-		relPath, _ := filepath.Rel(i18nDir, file)
-		category := filepath.Dir(relPath)
-		if category == "." {
-			category = "root"
-		}
-
-		config, err := core.LoadI18nConfig(file)
-		if err != nil {
-			fmt.Printf("  ⚠️ 解析失败: %s - %v\n", relPath, err)
-			continue
-		}
-
+	for _, config := range configs {
 		replacements := len(config.Replacements)
 		totalReplacements += replacements
-		categoryStats[category] += replacements
+		categoryStats[config.Category] += replacements
 	}
 
 	fmt.Printf("  ✓ 配置文件: %d 个\n", totalConfigs)
@@ -84,16 +74,11 @@ func runVerify(detailed, dryRun bool) {
 		}
 	}
 
-	// 2. 变量保护检查
+	// 4. 变量保护检查
 	fmt.Println("\n[2/4] 检查变量保护...")
 
 	variableIssues := 0
-	for _, file := range configFiles {
-		config, err := core.LoadI18nConfig(file)
-		if err != nil {
-			continue
-		}
-
+	for _, config := range configs {
 		for from, to := range config.Replacements {
 			// 检查 {xxx} 格式的变量
 			origVars := extractVariables(from)
@@ -102,8 +87,7 @@ func runVerify(detailed, dryRun bool) {
 			if !sameVariables(origVars, transVars) {
 				variableIssues++
 				if detailed {
-					relPath, _ := filepath.Rel(i18nDir, file)
-					fmt.Printf("  ⚠️ %s\n", relPath)
+					fmt.Printf("  ⚠️ %s/%s\n", config.Category, config.FileName)
 					fmt.Printf("     原文: %s\n", core.Truncate(from, 50))
 					fmt.Printf("     译文: %s\n", core.Truncate(to, 50))
 					fmt.Printf("     缺失变量: %v\n", diffVariables(origVars, transVars))
@@ -118,19 +102,14 @@ func runVerify(detailed, dryRun bool) {
 		fmt.Println("  ✓ 变量保护验证通过")
 	}
 
-	// 3. 模拟运行检查（如果启用）
+	// 5. 模拟运行检查（如果启用）
 	if dryRun {
 		fmt.Println("\n[3/4] 模拟运行检查...")
 
 		matchCount := 0
 		missCount := 0
 
-		for _, file := range configFiles {
-			config, err := core.LoadI18nConfig(file)
-			if err != nil {
-				continue
-			}
-
+		for _, config := range configs {
 			targetFile := filepath.Join(opencodeDir, config.File)
 			if !core.Exists(targetFile) {
 				missCount += len(config.Replacements)
@@ -145,6 +124,7 @@ func runVerify(detailed, dryRun bool) {
 
 			contentStr := string(content)
 			for from := range config.Replacements {
+				// 简单的字符串包含检查（未考虑正则边界，仅供参考）
 				if strings.Contains(contentStr, from) {
 					matchCount++
 				} else {
@@ -161,7 +141,7 @@ func runVerify(detailed, dryRun bool) {
 		fmt.Println("\n[3/4] 跳过模拟运行（使用 --dry-run 启用）")
 	}
 
-	// 4. 检查覆盖率
+	// 6. 检查覆盖率
 	fmt.Println("\n[4/4] 检查汉化覆盖率...")
 
 	sourceDir := filepath.Join(opencodeDir, "packages", "opencode", "src")
@@ -181,11 +161,7 @@ func runVerify(detailed, dryRun bool) {
 
 		// 统计已配置的文件
 		configuredFiles := make(map[string]bool)
-		for _, file := range configFiles {
-			config, err := core.LoadI18nConfig(file)
-			if err != nil {
-				continue
-			}
+		for _, config := range configs {
 			if config.File != "" {
 				configuredFiles[config.File] = true
 			}
