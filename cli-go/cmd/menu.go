@@ -244,25 +244,52 @@ func runFullWorkflow() {
 
 // launchOpenCode 启动 OpenCode
 func launchOpenCode() {
-	binDir, _ := core.GetBinDir()
 	exeName := "opencode"
 	if runtime.GOOS == "windows" {
 		exeName = "opencode.exe"
 	}
-	exePath := filepath.Join(binDir, exeName)
 
-	if !core.FileExists(exePath) {
-		fmt.Println("✗ 未找到编译好的 OpenCode，请先运行编译构建")
+	// 1. 尝试从构建目录查找 (开发环境)
+	binDir, _ := core.GetBinDir()
+	buildPath := filepath.Join(binDir, exeName)
+	if core.FileExists(buildPath) {
+		runExe(buildPath)
 		return
 	}
 
-	cmd := exec.Command(exePath)
+	// 2. 尝试从当前 CLI 所在目录查找 (部署环境)
+	if selfPath, err := os.Executable(); err == nil {
+		selfDir := filepath.Dir(selfPath)
+		deployPath := filepath.Join(selfDir, exeName)
+		if core.FileExists(deployPath) {
+			runExe(deployPath)
+			return
+		}
+	}
+
+	// 3. 尝试从 PATH 查找
+	if path, err := exec.LookPath(exeName); err == nil {
+		runExe(path)
+		return
+	}
+
+	fmt.Println("✗ 未找到 OpenCode 可执行文件")
+	fmt.Println("  请先运行 [编译构建] 或 [部署命令]")
+}
+
+// runExe 运行可执行文件
+func runExe(path string) {
+	fmt.Printf("启动: %s\n", path)
+	cmd := exec.Command(path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
-	err := cmd.Run()
-	if err != nil {
+
+	// 在后台启动，不阻塞 CLI
+	if err := cmd.Start(); err != nil {
 		fmt.Printf("启动失败: %v\n", err)
+	} else {
+		fmt.Println("✓ OpenCode 已在后台启动")
 	}
 }
 
