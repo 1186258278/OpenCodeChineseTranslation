@@ -353,9 +353,15 @@ func openBrowser(url string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
-		// 使用 cmd /c start "" "url" 是最稳健的方式
-		// 第一个空引号是窗口标题，防止 start 把 url 当作标题
-		cmd = exec.Command("cmd", "/c", "start", "", url)
+		// 优先尝试 rundll32，因为它不依赖 cmd.exe
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+		if err := cmd.Start(); err != nil {
+			// 如果 rundll32 失败，尝试 cmd /c start
+			// 使用 cmd /c start "" "url" 是最稳健的方式
+			cmd = exec.Command("cmd", "/c", "start", "", url)
+		} else {
+			return // rundll32 启动成功
+		}
 	case "darwin":
 		cmd = exec.Command("open", url)
 	default:
