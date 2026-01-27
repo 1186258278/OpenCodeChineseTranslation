@@ -7,6 +7,7 @@
     "placeholder=\"Authorization code\"": "placeholder=\"授权码\"",
     "? \"Popular\" : \"Other\"": "? \"热门\" : \"其他\"",
     "placeholder=\"API key\"": "placeholder=\"API密钥\"",
+    "label: \"API key\"": "label: \"API密钥\"",
     "(Recommended)": "(推荐)",
     "(Claude Max or API key)": "(Claude Max 或 API密钥)",
     "(ChatGPT Plus/Pro or API key)": "(ChatGPT Plus/Pro 或 API密钥)",

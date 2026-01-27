@@ -36,7 +36,7 @@ type GitHubRelease struct {
 
 var downloadCmd = &cobra.Command{
 	Use:   "download",
-	Short: "Download prebuilt OpenCode Chinese version",
+	Short: "下载预编译汉化版 (无需编译环境)",
 	Long:  "Download prebuilt OpenCode Chinese version from GitHub Releases (no compilation required)",
 	Run: func(cmd *cobra.Command, args []string) {
 		runDownload()

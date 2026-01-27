@@ -6,7 +6,7 @@ import (
 
 var fullCmd = &cobra.Command{
 	Use:   "full",
-	Short: "Run the full workflow (Clean -> Update -> Apply -> Verify -> Build -> Deploy)",
+	Short: "一键全流程 (更新→汉化→验证→编译→部署)",
 	Long: `Executes the complete OpenCode Chinese Translation workflow in one go:
 1. Clean: Restore source code to original state (git checkout)
 2. Update: Pull latest changes from official repository

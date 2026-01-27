@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"opencode-cli/internal/core"
@@ -12,7 +13,7 @@ import (
 
 var updateCmd = &cobra.Command{
 	Use:   "update",
-	Short: "Update OpenCode source code",
+	Short: "更新 OpenCode 源码",
 	Run: func(cmd *cobra.Command, args []string) {
 		repoURL := "https://github.com/anomalyco/opencode.git"
 		// 使用 Gitee 镜像加速 (可选，可以通过 flag 控制)
@@ -74,6 +75,15 @@ var updateCmd = &cobra.Command{
 			
 		} else {
 			fmt.Println("正在克隆 OpenCode 源码...")
+			fmt.Printf("目标目录: %s\n", opencodeDir)
+			
+			// 确保父目录存在
+			parentDir := filepath.Dir(opencodeDir)
+			if err := os.MkdirAll(parentDir, 0755); err != nil {
+				fmt.Printf("错误: 创建目录失败: %v\n", err)
+				return
+			}
+			
 			if err := core.GitClone(repoURL, opencodeDir); err != nil {
 				fmt.Printf("错误: 克隆失败: %v\n", err)
 				// 克隆失败，清理目录

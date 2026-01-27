@@ -16,7 +16,7 @@ import (
 
 var menuCmd = &cobra.Command{
 	Use:   "interactive",
-	Short: "Interactive menu",
+	Short: "启动交互式菜单",
 	Run: func(cmd *cobra.Command, args []string) {
 		RunMenu()
 	},
@@ -69,12 +69,13 @@ func RunMenu() {
 // getStatus 获取当前状态
 func getStatus() tui.StatusInfo {
 	opencodeDir, _ := core.GetOpencodeDir()
-	i18nDir, _ := core.GetI18nDir()
 	binDir, _ := core.GetBinDir()
 
 	// 判断文件是否存在
 	sourceExists := core.DirExists(opencodeDir)
-	i18nExists := core.DirExists(i18nDir)
+	
+	// 汉化配置：使用 HasI18nConfig()，始终有内嵌资源可用
+	i18nExists := core.HasI18nConfig()
 
 	// 判断二进制是否存在
 	exeName := "opencode"
@@ -156,7 +157,7 @@ func executeAction(action string) {
 		runDeploy(false)
 
 	case "package-all":
-		fmt.Println("\n▶ 打包三端...")
+		fmt.Println("\n▶ 打包六端 (Win/Mac/Linux x64/arm64)...")
 		packageCmd.Run(packageCmd, []string{})
 
 	case "launch":
@@ -180,6 +181,13 @@ func executeAction(action string) {
 		fmt.Println("\n▶ 检查环境...")
 		checkEnvironment()
 
+	case "diagnose":
+		fmt.Println("\n▶ 诊断修复...")
+		diagnoseCmd.Run(diagnoseCmd, []string{})
+
+	case "env-install":
+		runEnvInstall()
+
 	case "fix-bun":
 		runFixBun()
 
@@ -197,14 +205,43 @@ func executeAction(action string) {
 
 	case "config":
 		fmt.Println("\n▶ 显示配置:")
+		homeDir, _ := os.UserHomeDir()
 		projectDir, _ := core.GetProjectDir()
 		opencodeDir, _ := core.GetOpencodeDir()
 		i18nDir, _ := core.GetI18nDir()
 		binDir, _ := core.GetBinDir()
-		fmt.Printf("  项目目录: %s\n", projectDir)
-		fmt.Printf("  源码目录: %s\n", opencodeDir)
-		fmt.Printf("  汉化目录: %s\n", i18nDir)
-		fmt.Printf("  输出目录: %s\n", binDir)
+		deployDir, _ := getDeployDir()
+		
+		fmt.Println("\n  [统一安装目录]")
+		fmt.Printf("    根目录: %s/.opencode-i18n/\n", homeDir)
+		fmt.Printf("    部署目录: %s\n", deployDir)
+		fmt.Printf("    源码目录: %s\n", opencodeDir)
+		fmt.Printf("    构建目录: %s\n", binDir)
+		
+		fmt.Println("\n  [开发环境]")
+		fmt.Printf("    项目目录: %s\n", projectDir)
+		if i18nDir != "" {
+			fmt.Printf("    汉化目录: %s (外部)\n", i18nDir)
+		} else {
+			fmt.Println("    汉化目录: 使用内嵌资源")
+		}
+		
+		// 检查目录状态
+		fmt.Println("\n  [目录状态]")
+		if core.DirExists(opencodeDir) {
+			fmt.Println("    源码: ✓ 已克隆")
+		} else {
+			fmt.Println("    源码: ✗ 未克隆 (运行 update 获取)")
+		}
+		if core.DirExists(deployDir) {
+			fmt.Println("    部署: ✓ 已配置")
+		} else {
+			fmt.Println("    部署: ✗ 未部署")
+		}
+
+	case "uninstall":
+		fmt.Println("\n▶ 卸载清理...")
+		uninstallCmd.Run(uninstallCmd, []string{})
 
 	default:
 		fmt.Printf("\n未实现的操作: %s\n", action)

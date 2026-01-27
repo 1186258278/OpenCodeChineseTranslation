@@ -3,7 +3,7 @@
 $ErrorActionPreference = "Stop"
 
 $APP_NAME = "opencode-cli"
-$VERSION = "8.5.0"
+$VERSION = "8.6.0"
 $OUTPUT_DIR = "dist"
 
 # 创建输出目录

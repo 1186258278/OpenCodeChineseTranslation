@@ -17,7 +17,26 @@
 *   **Git**: 用于版本控制
 *   **Node.js/Bun** (可选): 仅当需要编译 OpenCode 源码时需要
 
-### 2. 编译 CLI 工具
+### 2. 目录结构
+
+CLI 统一使用 `~/.opencode-i18n/` 目录：
+
+```
+~/.opencode-i18n/
+├── bin/              # CLI 工具和 OpenCode 可执行文件
+├── opencode/         # OpenCode 源码
+└── build/            # 编译输出
+```
+
+**本地开发时**，可通过环境变量覆盖：
+```bash
+export OPENCODE_SOURCE_DIR=/path/to/opencode   # 覆盖源码目录
+export OPENCODE_BUILD_DIR=/path/to/bin         # 覆盖编译输出
+```
+
+汉化配置已内嵌到二进制文件中，无需外部文件。
+
+### 3. 编译 CLI 工具
 
 ```bash
 cd cli-go
@@ -29,7 +48,7 @@ go build -o opencode-cli.exe .
 go test ./...
 ```
 
-### 3. 交叉编译
+### 4. 交叉编译
 
 我们提供了一键编译脚本：
 
@@ -45,12 +64,15 @@ go test ./...
 
 ## 汉化指南
 
-*   所有的汉化 JSON 文件位于 `opencode-i18n/` 目录下。
-*   请确保 JSON 格式正确，不要包含注释。
-*   修改后，请使用新的 CLI 工具进行验证：
+从 v8.5+ 开始，汉化资源已内嵌到 CLI 工具中：
+
+*   汉化 JSON 文件位于 `cli-go/internal/core/assets/opencode-i18n/` 目录下
+*   修改后需要重新编译 CLI 工具才能生效
+*   验证汉化配置：
     ```bash
-    ./opencode-cli verify --detailed
+    opencode-cli verify --detailed
     ```
+*   JSON 文件格式要求：无注释，UTF-8 编码
 
 ---
 
@@ -95,7 +117,7 @@ chore: cleanup legacy scripts
 版本号由 `cli-go/internal/core/version.go` 中的 `VERSION` 常量统一管理：
 
 ```go
-const VERSION = "8.2.0"
+const VERSION = "8.6.0"
 ```
 
 发布新版本时：

@@ -89,27 +89,71 @@ func findProjectRoot(startDir string) string {
 }
 
 // GetOpencodeDir 获取 OpenCode 源码目录
+// 统一使用 ~/.opencode-i18n/opencode，支持环境变量覆盖
 func GetOpencodeDir() (string, error) {
-	projectDir, err := GetProjectDir()
+	// 环境变量 OPENCODE_SOURCE_DIR (开发者可自定义，用于本地调试)
+	if envDir := os.Getenv("OPENCODE_SOURCE_DIR"); envDir != "" {
+		return envDir, nil
+	}
+
+	// 统一用户目录：~/.opencode-i18n/opencode
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(projectDir, "opencode-zh-CN"), nil
+	return filepath.Join(homeDir, ".opencode-i18n", "opencode"), nil
 }
 
-// GetI18nDir 获取汉化配置目录（已弃用，汉化配置现在内嵌在二进制文件中）
-// 保留此函数是为了向后兼容，返回空字符串表示应使用内嵌资源
+// GetI18nDir 获取外部汉化配置目录
+// 如果存在外部配置目录则返回路径，否则返回空字符串表示应使用内嵌资源
+// 优先级：项目目录/opencode-i18n > 项目目录/cli-go/internal/core/assets/opencode-i18n
 func GetI18nDir() (string, error) {
-	return "", nil
+	projectDir, err := GetProjectDir()
+	if err != nil {
+		return "", nil // 返回空表示使用内嵌资源
+	}
+
+	// 检查项目根目录下的外部 i18n 目录（开发环境）
+	externalDir := filepath.Join(projectDir, "opencode-i18n")
+	if DirExists(externalDir) {
+		return externalDir, nil
+	}
+
+	// 检查 cli-go 内的 assets 目录（源码开发环境）
+	assetsDir := filepath.Join(projectDir, "cli-go", "internal", "core", "assets", "opencode-i18n")
+	if DirExists(assetsDir) {
+		return assetsDir, nil
+	}
+
+	return "", nil // 返回空表示使用内嵌资源
 }
 
-// GetBinDir 获取输出目录
+// IsUsingEmbeddedI18n 检查是否使用内嵌的汉化资源
+func IsUsingEmbeddedI18n() bool {
+	dir, _ := GetI18nDir()
+	return dir == ""
+}
+
+// HasI18nConfig 检查汉化配置是否可用（内嵌或外部）
+func HasI18nConfig() bool {
+	// 始终有内嵌资源可用
+	return true
+}
+
+// GetBinDir 获取编译输出目录
+// 统一使用 ~/.opencode-i18n/build，支持环境变量覆盖
 func GetBinDir() (string, error) {
-	projectDir, err := GetProjectDir()
+	// 环境变量 OPENCODE_BUILD_DIR (开发者可自定义，用于本地调试)
+	if envDir := os.Getenv("OPENCODE_BUILD_DIR"); envDir != "" {
+		return envDir, nil
+	}
+
+	// 统一用户目录：~/.opencode-i18n/build
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(projectDir, "bin"), nil
+	return filepath.Join(homeDir, ".opencode-i18n", "build"), nil
 }
 
 // Exec 执行命令并返回输出
@@ -265,32 +309,33 @@ func Truncate(s string, maxLen int) string {
 
 // DetectPlatform 检测当前平台，返回 OpenCode 构建目标格式
 // 返回值如：windows-x64, darwin-arm64, linux-x64
+// 支持的平台：windows-x64, windows-arm64, darwin-x64, darwin-arm64, linux-x64, linux-arm64
 func DetectPlatform() string {
-	os := runtime.GOOS
+	osName := runtime.GOOS
 	arch := runtime.GOARCH
 
+	// 架构映射：Go 的 amd64 对应 OpenCode 的 x64
+	archName := arch
+	if arch == "amd64" {
+		archName = "x64"
+	}
+
 	// 平台映射
-	switch os {
+	switch osName {
 	case "windows":
-		if arch == "amd64" || arch == "x64" {
-			return "windows-x64"
+		if archName == "x64" || archName == "arm64" {
+			return "windows-" + archName
 		}
 	case "darwin":
-		if arch == "arm64" {
-			return "darwin-arm64"
-		}
-		if arch == "amd64" {
-			return "darwin-x64"
+		if archName == "x64" || archName == "arm64" {
+			return "darwin-" + archName
 		}
 	case "linux":
-		if arch == "amd64" || arch == "x64" {
-			return "linux-x64"
-		}
-		if arch == "arm64" {
-			return "linux-arm64"
+		if archName == "x64" || archName == "arm64" {
+			return "linux-" + archName
 		}
 	}
 
-	// 默认
-	return "windows-x64"
+	// 默认回退到当前系统-x64
+	return osName + "-x64"
 }

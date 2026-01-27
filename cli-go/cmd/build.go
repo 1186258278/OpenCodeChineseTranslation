@@ -9,7 +9,7 @@ import (
 
 var buildCmd = &cobra.Command{
 	Use:   "build",
-	Short: "Build OpenCode",
+	Short: "编译构建 OpenCode",
 	Run: func(cmd *cobra.Command, args []string) {
 		platform, _ := cmd.Flags().GetString("platform")
 		deploy, _ := cmd.Flags().GetBool("deploy")

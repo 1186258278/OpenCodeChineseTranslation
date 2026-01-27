@@ -9,7 +9,7 @@ import (
 
 var applyCmd = &cobra.Command{
 	Use:   "apply",
-	Short: "Apply Chinese translations to source code",
+	Short: "应用汉化补丁到源码",
 	Run: func(cmd *cobra.Command, args []string) {
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		silent, _ := cmd.Flags().GetBool("silent")

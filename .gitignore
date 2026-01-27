@@ -13,6 +13,7 @@ opencode.exe
 *.log
 api_doc_mcp.log
 nul
+docs/ANTIGRAVITY_INTEGRATION.md
 
 # ====================
 # Worktrees (开发隔离)
@@ -86,3 +87,4 @@ releases/
 openspec/
 
 .worktrees/
+

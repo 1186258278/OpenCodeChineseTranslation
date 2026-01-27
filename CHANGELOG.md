@@ -7,7 +7,7 @@
 
 ---
 
-## [8.5.0] - 2026-01-25
+## [8.6.0] - 2026-01-27
 
 ### 🚀 全平台与视觉增强
 
@@ -22,8 +22,23 @@
 - **配置安全性增强** - 重构配置写入逻辑，实现非破坏性更新
   - 在更新 Antigravity 配置时，不再覆盖用户的自定义插件和其他 Provider 配置
 
+### ✨ 新增功能
+
+- **诊断修复** (`diagnose`) - 自动检测并修复常见问题
+  - 检测多版本 opencode 冲突 (npm/scoop/brew 安装的官方版)
+  - 检测编译环境缺失 (Git/Node.js/Bun)
+  - 检测 macOS 签名隔离问题，检测 PATH 配置异常
+  - 支持 `--fix` 一键自动修复
+- **卸载清理** (`uninstall`) - 一键还原干净环境
+  - 清理 CLI 工具、源码目录、配置文件，自动移除 PATH 条目
+  - 支持 `--all` 完全清理，`--keep-config` 保留配置
+- **环境安装** (`env-install`) - 一键安装编译环境
+  - 自动检测并安装 Git/Node.js/Bun
+  - 支持 Windows (winget/scoop/choco)、macOS (brew)、Linux (apt/dnf/yum/pacman)
+
 ### 🛠️ 开发者体验
 
+- **命令帮助全中文化** - 所有命令的 Short 描述统一为中文
 - **安装脚本升级** - 支持指定版本安装 (`--version nightly`)，方便测试和尝鲜
 - **官网入口优化** - 主页新增 Nightly 构建切换开关，直达每日最新版本
 - **文档更新** - 重写 `CONTRIBUTING.md`，适配最新的 Go CLI 工作流
@@ -31,9 +46,26 @@
 
 ### 🐛 问题修复
 
+- **汉化配置优化** - 修复重复配置导致的应用失败，新增遗漏翻译
+  - 删除重复的 `contexts/context-local.json`（与 `common/local-context.json` 冲突）
+  - 新增 `title: "Line up/down"` 翻译（向上/向下滚动）
+  - 新增 `title: "toggle"` 翻译（MCP 切换）
+  - 新增 `label: "API key"` 翻译
 - **全平台构建修复** - 修复 macOS Intel (x64) 平台无法构建的问题 (Fixes #9)
 - **环境部署修正** - 修复 Antigravity 和 OhMyOC 快捷部署配置不准确的问题 (Ref #8)
 - **汉化流程简化** - 汉化资源内嵌于 CLI 工具，不再强制要求拉取完整项目即可应用汉化 (Ref #8)
+- **PowerShell 安装脚本修复** - 修复语法错误导致的解析失败 (Fixes #12)
+- **三端目录完全统一** - 所有目录归一到 `~/.opencode-i18n/` 下
+  - `bin/` - CLI 工具和汉化版 OpenCode
+  - `opencode/` - OpenCode 官方源码
+  - `build/` - 编译输出目录
+- **开发者支持** - 通过环境变量覆盖默认路径
+  - `OPENCODE_SOURCE_DIR` - 覆盖源码目录
+  - `OPENCODE_BUILD_DIR` - 覆盖编译输出目录
+- **诊断增强** - `diagnose` 命令新增检测
+  - 检测所有 opencode-cli 安装位置和版本
+  - 检测 PATH 优先级问题（旧版本在新版本前面）
+  - 检测 PATH 重复项，一键清理优化
 
 ---
 

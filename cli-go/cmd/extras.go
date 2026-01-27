@@ -19,7 +19,7 @@ import (
 // ohmyopencodeCmd Oh-My-OpenCode 命令
 var ohmyopencodeCmd = &cobra.Command{
 	Use:   "ohmyopencode",
-	Short: "Install Oh-My-OpenCode plugin",
+	Short: "安装 Oh-My-OpenCode 插件",
 	Long:  "Install Oh-My-OpenCode plugin for enhanced features",
 	Run: func(cmd *cobra.Command, args []string) {
 		runOhMyOpenCode()
@@ -29,7 +29,7 @@ var ohmyopencodeCmd = &cobra.Command{
 // helperCmd 智谱编码助手命令
 var helperCmd = &cobra.Command{
 	Use:   "helper",
-	Short: "Install Zhipu Coding Helper",
+	Short: "安装智谱编码助手",
 	Long:  "Install GLM Coding Plan helper for Claude Code CLI management",
 	Run: func(cmd *cobra.Command, args []string) {
 		runHelper()
@@ -39,7 +39,7 @@ var helperCmd = &cobra.Command{
 // fixBunCmd 校准 Bun 命令
 var fixBunCmd = &cobra.Command{
 	Use:   "fix-bun",
-	Short: "Fix Bun version",
+	Short: "校准 Bun 版本",
 	Long:  "Calibrate Bun to the recommended version",
 	Run: func(cmd *cobra.Command, args []string) {
 		runFixBun()

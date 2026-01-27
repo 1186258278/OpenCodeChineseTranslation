@@ -200,17 +200,16 @@ func (b *Builder) GetDistPath(platform string) string {
 	return filepath.Join(b.buildDir, "dist", "opencode-"+platform, "bin", "opencode"+ext)
 }
 
-// DeployToLocal 部署到本地 bin 目录
+// DeployToLocal 部署到本地 bin 目录 (统一目录: ~/.opencode-i18n/build)
 func (b *Builder) DeployToLocal(platform string, silent bool) error {
 	if !silent {
 		fmt.Println("正在部署到本地环境...")
 	}
 
-	projectDir, err := GetProjectDir()
+	binDir, err := GetBinDir()
 	if err != nil {
 		return err
 	}
-	binDir := filepath.Join(projectDir, "bin")
 
 	if err := EnsureDir(binDir); err != nil {
 		return err

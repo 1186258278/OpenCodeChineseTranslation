@@ -13,7 +13,7 @@ import (
 
 var verifyCmd = &cobra.Command{
 	Use:   "verify",
-	Short: "Verify i18n configuration",
+	Short: "验证汉化配置完整性",
 	Long:  "Verify the i18n configuration files, check variables and coverage",
 	Run: func(cmd *cobra.Command, args []string) {
 		detailed, _ := cmd.Flags().GetBool("detailed")
@@ -110,8 +110,9 @@ func runVerify(detailed, dryRun bool) {
 		missCount := 0
 
 		for _, config := range configs {
-			targetFile := filepath.Join(opencodeDir, config.File)
-			if !core.Exists(targetFile) {
+			// 使用与 apply 相同的路径处理逻辑
+			targetFile := i18n.GetTargetFilePath(config)
+			if targetFile == "" || !core.Exists(targetFile) {
 				missCount += len(config.Replacements)
 				continue
 			}

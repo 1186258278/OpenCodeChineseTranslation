@@ -103,6 +103,7 @@ func (i *I18n) LoadConfig() ([]TranslationConfig, error) {
 
 	for _, entry := range entries {
 		if entry.IsDir() {
+			// 处理子目录中的配置文件
 			categoryName := entry.Name()
 
 			var files []fs.DirEntry
@@ -121,36 +122,63 @@ func (i *I18n) LoadConfig() ([]TranslationConfig, error) {
 
 			for _, file := range files {
 				if strings.HasSuffix(file.Name(), ".json") {
-					var config TranslationConfig
-					var configPath string
-					var readErr error
-
-					if i.useEmbedded {
-						configPath = i.i18nDir + "/" + categoryName + "/" + file.Name()
-						var data []byte
-						data, readErr = fs.ReadFile(embeddedAssets, configPath)
-						if readErr == nil {
-							readErr = json.Unmarshal(data, &config)
-						}
-					} else {
-						configPath = filepath.Join(i.i18nDir, categoryName, file.Name())
-						readErr = ReadJSON(configPath, &config)
+					config := i.loadSingleConfig(categoryName, file.Name())
+					if config != nil {
+						configs = append(configs, *config)
 					}
-
-					if readErr != nil {
-						fmt.Printf("警告: 解析配置文件失败 %s: %v\n", configPath, readErr)
-						continue
-					}
-					config.Category = categoryName
-					config.FileName = file.Name()
-					config.ConfigPath = configPath
-					configs = append(configs, config)
 				}
+			}
+		} else if strings.HasSuffix(entry.Name(), ".json") {
+			// 处理根目录下的配置文件（如 app.json）
+			// 跳过 config.json（元信息文件，不是汉化规则）
+			if entry.Name() == "config.json" {
+				continue
+			}
+			config := i.loadSingleConfig("root", entry.Name())
+			if config != nil {
+				configs = append(configs, *config)
 			}
 		}
 	}
 
 	return configs, nil
+}
+
+// loadSingleConfig 加载单个配置文件
+func (i *I18n) loadSingleConfig(category, fileName string) *TranslationConfig {
+	var config TranslationConfig
+	var configPath string
+	var readErr error
+
+	if i.useEmbedded {
+		if category == "root" {
+			configPath = i.i18nDir + "/" + fileName
+		} else {
+			configPath = i.i18nDir + "/" + category + "/" + fileName
+		}
+		var data []byte
+		data, readErr = fs.ReadFile(embeddedAssets, configPath)
+		if readErr == nil {
+			readErr = json.Unmarshal(data, &config)
+		}
+	} else {
+		if category == "root" {
+			configPath = filepath.Join(i.i18nDir, fileName)
+		} else {
+			configPath = filepath.Join(i.i18nDir, category, fileName)
+		}
+		readErr = ReadJSON(configPath, &config)
+	}
+
+	if readErr != nil {
+		fmt.Printf("警告: 解析配置文件失败 %s: %v\n", configPath, readErr)
+		return nil
+	}
+
+	config.Category = category
+	config.FileName = fileName
+	config.ConfigPath = configPath
+	return &config
 }
 
 // ApplyResult 应用结果
@@ -166,6 +194,22 @@ type ApplyResult struct {
 	SkipReason string
 }
 
+// GetTargetFilePath 获取汉化配置对应的目标文件完整路径
+// 统一 verify 和 apply 的路径处理逻辑
+func (i *I18n) GetTargetFilePath(config TranslationConfig) string {
+	if config.File == "" {
+		return ""
+	}
+
+	relativePath := config.File
+	// 如果路径不以 packages/ 开头，自动添加 packages/opencode/ 前缀
+	if !strings.HasPrefix(relativePath, "packages/") {
+		relativePath = filepath.Join("packages", "opencode", relativePath)
+	}
+
+	return filepath.Join(i.opencodeDir, relativePath)
+}
+
 // ApplyConfig 应用单个配置文件的替换规则
 func (i *I18n) ApplyConfig(config TranslationConfig, dryRun bool) ApplyResult {
 	result := ApplyResult{
@@ -178,12 +222,7 @@ func (i *I18n) ApplyConfig(config TranslationConfig, dryRun bool) ApplyResult {
 		return result
 	}
 
-	relativePath := config.File
-	if !strings.HasPrefix(relativePath, "packages/") {
-		relativePath = filepath.Join("packages", "opencode", relativePath)
-	}
-
-	targetPath := filepath.Join(i.opencodeDir, relativePath)
+	targetPath := i.GetTargetFilePath(config)
 
 	if !Exists(targetPath) {
 		result.Skipped = true

@@ -18,7 +18,7 @@ const DefaultAntigravityEndpoint = "http://127.0.0.1:8045"
 
 var antigravityCmd = &cobra.Command{
 	Use:   "antigravity",
-	Short: "Configure Antigravity Tools endpoint",
+	Short: "配置 Antigravity 本地 AI 代理",
 	Long:  "Configure Antigravity Tools AI proxy endpoint for OpenCode",
 	Run: func(cmd *cobra.Command, args []string) {
 		runAntigravity()

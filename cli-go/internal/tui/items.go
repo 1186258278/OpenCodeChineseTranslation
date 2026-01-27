@@ -14,28 +14,31 @@ type Tutorial struct {
 	Content []string
 }
 
-// 主菜单项目 (20个功能)
+// 主菜单项目 (24个功能)
 var MainMenuItems = []MenuItem{
 	{Key: "[*]", Name: "一键全流程", Value: "full", Desc: "一键全流程：清理 + 更新 + 汉化 + 验证 + 编译 + 部署。推荐首次使用。"},
 	{Key: "[D]", Name: "下载预编译版", Value: "download", Desc: "从 GitHub Releases 下载预编译的汉化版，无需 Bun/Node.js 环境。"},
+	{Key: "[E]", Name: "安装编译环境", Value: "env-install", Desc: "一键安装编译所需环境 (Git/Node.js/Bun/npm)，支持 Windows/macOS/Linux。"},
 	{Key: "[>]", Name: "更新源码", Value: "update", Desc: "从 GitHub 获取最新 OpenCode 源码。如遇冲突可选择强制覆盖。"},
 	{Key: "[~]", Name: "恢复源码", Value: "restore", Desc: "使用 Git 清除所有本地修改，恢复到纯净状态。用于解决汉化冲突或重置。"},
 	{Key: "[W]", Name: "应用汉化", Value: "apply", Desc: "将 opencode-i18n 中的汉化配置注入到源码中。包含变量保护机制。"},
 	{Key: "[V]", Name: "验证汉化", Value: "verify", Desc: "检查汉化配置格式、变量完整性以及翻译覆盖率。推荐在编译前运行。"},
 	{Key: "[#]", Name: "编译构建", Value: "build", Desc: "使用 Bun 编译生成 OpenCode 可执行文件。自动处理多平台构建。"},
 	{Key: "[^]", Name: "部署命令", Value: "deploy", Desc: "将 opencode-cli 和 opencode (如果已编译) 部署到系统 PATH。"},
-	{Key: "[=]", Name: "打包三端", Value: "package-all", Desc: "为 Win/Mac/Linux 平台打包发布版 ZIP 文件，生成 Release Notes 和校验码。"},
+	{Key: "[=]", Name: "打包六端", Value: "package-all", Desc: "为 Win/Mac/Linux (x64/arm64) 打包发布版 ZIP 文件，生成 Release Notes。"},
 	{Key: "[P]", Name: "启动OpenCode", Value: "launch", Desc: "直接启动当前已编译好的 OpenCode 程序。支持后台运行模式。"},
 	{Key: "[A]", Name: "Antigravity", Value: "antigravity", Desc: "配置 Antigravity 本地 AI 代理服务 (Claude/GPT/Gemini)，用于智能体功能。"},
 	{Key: "[O]", Name: "Oh-My-OC", Value: "ohmyopencode", Desc: "安装 Oh-My-OpenCode 插件，启用智能体、Git 增强、LSP 等高级功能。"},
 	{Key: "[@]", Name: "智谱助手", Value: "helper", Desc: "安装智谱编码助手 (@z_ai/coding-helper)，统一管理 Claude Code 等 CLI 工具。"},
 	{Key: "[G]", Name: "GitHub仓库", Value: "github", Desc: "在浏览器中打开项目仓库 (GitHub/Gitee)，查看源码或提交 Issue。"},
 	{Key: "[?]", Name: "检查环境", Value: "env", Desc: "检查 Node.js, Bun, Git 等开发环境是否满足编译要求。"},
+	{Key: "[F]", Name: "诊断修复", Value: "diagnose", Desc: "自动检测版本冲突、环境问题并一键修复。遇到问题先试这个！"},
 	{Key: "[B]", Name: "校准 Bun", Value: "fix-bun", Desc: "强制将 Bun 版本校准为项目推荐版本 (v1.3.5)，解决兼容性问题。"},
 	{Key: "[C]", Name: "清理缓存", Value: "clean-cache", Desc: "执行 bun pm cache rm 清理全局缓存，解决安装依赖报错问题。"},
 	{Key: "[U]", Name: "更新脚本", Value: "update-script", Desc: "从 Git 更新本汉化管理脚本到最新版本。不影响 OpenCode 源码。"},
 	{Key: "[L]", Name: "更新日志", Value: "changelog", Desc: "查看 OpenCode 官方仓库的最近更新日志 (需要源码)。"},
 	{Key: "[S]", Name: "显示配置", Value: "config", Desc: "显示当前项目、源码、汉化、输出目录的路径配置信息。"},
+	{Key: "[!]", Name: "卸载清理", Value: "uninstall", Desc: "一键卸载汉化工具，清理所有相关文件，还原干净环境。"},
 	{Key: "[X]", Name: "退出", Value: "exit", Desc: "退出管理工具。"},
 }
 

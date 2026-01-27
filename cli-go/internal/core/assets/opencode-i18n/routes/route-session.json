@@ -54,6 +54,9 @@
     "title=\"# Todos\"": "title=\"# 待办\"",
     "title=\"# Questions\"": "title=\"# 问题\"",
     "title: \"Page up\"": "title: \"向上翻页\"",
+    "title: \"Line up\"": "title: \"向上滚动\"",
+    "title: \"Line down\"": "title: \"向下滚动\"",
+    "message: \"Failed to copy share URL to clipboard\"": "message: \"复制链接到剪贴板失败\"",
     "{revert()!.reverted.length} message reverted": "{revert()!.reverted.length} 条消息已撤销",
     "Fetching from the web...": "正在从网络获取..."
   }

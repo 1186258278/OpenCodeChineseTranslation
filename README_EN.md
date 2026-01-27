@@ -31,12 +31,12 @@ The new installation scripts download the **Go-based CLI tool** directly, requir
 
 **Windows (PowerShell)**
 ```powershell
-powershell -c "irm https://raw.githubusercontent.com/1186258278/OpenCodeChineseTranslation/main/install.ps1 | iex"
+powershell -c "irm https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.ps1 | iex"
 ```
 
 **Linux / macOS**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/1186258278/OpenCodeChineseTranslation/main/install.sh | bash
+curl -fsSL https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.sh | bash
 ```
 
 ### 2. Usage
@@ -63,29 +63,36 @@ This automatically downloads the latest prebuilt Chinese version from GitHub Rel
 
 You can also visit the [Releases page](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest) to download binaries directly.
 
-| Platform | CLI Tool | Chinese OpenCode |
-|----------|----------|------------------|
-| Windows x64 | `opencode-cli-windows-amd64.exe` | `opencode-zh-CN-windows-x64.zip` |
-| macOS Apple Silicon | `opencode-cli-darwin-arm64` | `opencode-zh-CN-darwin-arm64.zip` |
-| Linux x64 | `opencode-cli-linux-amd64` | `opencode-zh-CN-linux-x64.zip` |
+| Platform | CLI Tool |
+|----------|----------|
+| Windows x64 | `opencode-cli-windows-amd64.exe` |
+| Windows ARM64 | `opencode-cli-windows-arm64.exe` |
+| macOS Apple Silicon | `opencode-cli-darwin-arm64` |
+| macOS Intel | `opencode-cli-darwin-amd64` |
+| Linux x64 | `opencode-cli-linux-amd64` |
+| Linux ARM64 | `opencode-cli-linux-arm64` |
+
+> Chinese OpenCode binaries are available as ZIP packages on the [Releases page](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest).
 
 ---
 
 ## CLI Commands
 
-The CLI tool (v8.1.0) provides comprehensive management capabilities:
+The CLI tool (v8.6.0) provides comprehensive management capabilities:
 
 | Command | Description |
 |---------|-------------|
 | `opencode-cli` | Launch interactive menu (default) |
-| `opencode-cli download` | 📦 **New**: Download prebuilt Chinese version |
+| `opencode-cli download` | Download prebuilt Chinese version (no build env required) |
+| `opencode-cli env-install` | **One-click install** build environment (Git/Node.js/Bun) |
 | `opencode-cli update` | Update OpenCode source code |
 | `opencode-cli apply` | Apply translation patches |
 | `opencode-cli verify` | Verify translation configuration |
 | `opencode-cli build` | Build OpenCode binary |
-| `opencode-cli deploy --shortcut` | Deploy and create desktop shortcut |
+| `opencode-cli deploy` | Deploy to system PATH |
+| `opencode-cli diagnose` | **Diagnose** and fix conflicts/issues |
+| `opencode-cli uninstall` | Uninstall and clean up all files |
 | `opencode-cli antigravity` | Configure Antigravity local AI proxy |
-| `opencode-cli helper` | Install Zhipu Coding Helper (@z_ai/coding-helper) |
 
 ---
 
@@ -100,14 +107,45 @@ If you want to contribute, please refer to the [Contributing Guide](CONTRIBUTING
 
 ## FAQ
 
-**Q: Build failed with "bun command not found"?**
-A: Bun is required for building OpenCode from source. Install it from [bun.sh](https://bun.sh). Alternatively, use `opencode-cli download` to get prebuilt binaries.
+**Having issues? Run diagnose first!**
+```bash
+opencode-cli diagnose --fix
+```
+Auto-detects and fixes version conflicts, missing dependencies, and PATH issues.
 
-**Q: Some interface text is still in English?**
-A: OpenCode updates frequently, and some new features may not yet be covered. Please submit an Issue to report missing translations.
+**Q: Still shows English after install?**
+Run `opencode-cli diagnose` to detect and clean up conflicting versions.
 
-**Q: How to use custom AI models?**
-A: Use `opencode-cli antigravity` for one-click configuration, or manually edit `~/.config/opencode/opencode.json`.
+**Q: Build failed?**
+```bash
+opencode-cli env-install    # Install Git/Node/Bun
+opencode-cli download       # Or download prebuilt (no build env needed)
+```
+
+**Q: How to completely uninstall?**
+```bash
+opencode-cli uninstall --all
+```
+
+**Q: macOS "cannot verify developer"?**
+Run `opencode-cli diagnose --fix` or manually: `xattr -cr /path/to/opencode`
+
+**Q: Where are files installed?**
+Unified directory structure: `~/.opencode-i18n/`
+- `bin/` - CLI tool and Chinese OpenCode
+- `opencode/` - OpenCode source code
+- `build/` - Build output
+
+Windows actual path: `%USERPROFILE%\.opencode-i18n\`
+
+**Q: Local development setup?**
+Developers can customize paths via environment variables:
+```bash
+export OPENCODE_SOURCE_DIR=/path/to/opencode   # Source directory
+export OPENCODE_BUILD_DIR=/path/to/bin         # Build output
+export OPENCODE_PROJECT_DIR=/path/to/project   # Translation project
+```
+Or create `opencode/` and `bin/` folders in the project directory - CLI auto-detects them.
 
 ---
 

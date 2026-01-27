@@ -1,33 +1,81 @@
 #!/bin/bash
 set -e
 
+# OpenCode 汉化工具一键安装脚本 (Go CLI 版)
+# 支持: Linux x64/ARM64, macOS x64/ARM64 (Apple Silicon)
+
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
+GRAY='\033[0;90m'
 NC='\033[0m' # No Color
 
 echo -e "${CYAN}==============================================${NC}"
-echo -e "${CYAN}   OpenCode 汉化管理工具安装脚本 (v8.5.0)   ${NC}"
+echo -e "${CYAN}   OpenCode 汉化管理工具安装脚本 (v8.6.0)   ${NC}"
 echo -e "${CYAN}==============================================${NC}"
 
-# 1. 检测架构
-echo -e "\n${YELLOW}[1/4] 检测系统架构...${NC}"
-OS="$(uname -s)"
-ARCH="$(uname -m)"
+# 1. 系统兼容性检测
+echo -e "\n${YELLOW}[1/4] 检测系统兼容性...${NC}"
+OS_RAW="$(uname -s)"
+ARCH_RAW="$(uname -m)"
 
-case "$OS" in
-    Linux)     OS="linux" ;;
-    Darwin)    OS="darwin" ;;
-    *)         echo -e "${RED}不支持的系统: $OS${NC}"; exit 1 ;;
+# 检测操作系统
+case "$OS_RAW" in
+    Linux)
+        OS="linux"
+        # 检测是否为 WSL
+        if grep -qi microsoft /proc/version 2>/dev/null; then
+            echo -e "${GRAY}  检测到 WSL 环境${NC}"
+        fi
+        # 检测发行版
+        if [ -f /etc/os-release ]; then
+            . /etc/os-release
+            echo -e "${GRAY}  发行版: $NAME $VERSION_ID${NC}"
+        fi
+        ;;
+    Darwin)
+        OS="darwin"
+        # 检测 macOS 版本
+        MACOS_VERSION=$(sw_vers -productVersion 2>/dev/null || echo "unknown")
+        echo -e "${GRAY}  macOS 版本: $MACOS_VERSION${NC}"
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
+        echo -e "${RED}✗ 错误: 请使用 PowerShell 安装脚本${NC}"
+        echo -e "${RED}  irm https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.ps1 | iex${NC}"
+        exit 1
+        ;;
+    *)
+        echo -e "${RED}✗ 错误: 不支持的系统: $OS_RAW${NC}"
+        echo -e "${RED}  支持的系统: Linux, macOS${NC}"
+        exit 1
+        ;;
 esac
 
-case "$ARCH" in
-    x86_64)  ARCH="amd64" ;;
-    arm64)   ARCH="arm64" ;;
-    aarch64) ARCH="arm64" ;;
-    *)       echo -e "${RED}不支持的架构: $ARCH${NC}"; exit 1 ;;
+# 检测架构
+case "$ARCH_RAW" in
+    x86_64|amd64)
+        ARCH="amd64"
+        ;;
+    arm64|aarch64)
+        ARCH="arm64"
+        ;;
+    armv7l|armhf)
+        echo -e "${RED}✗ 错误: 不支持 32 位 ARM 架构${NC}"
+        echo -e "${RED}  OpenCode 仅支持 64 位系统 (x64/ARM64)${NC}"
+        exit 1
+        ;;
+    i386|i686)
+        echo -e "${RED}✗ 错误: 不支持 32 位 x86 架构${NC}"
+        echo -e "${RED}  OpenCode 仅支持 64 位系统 (x64/ARM64)${NC}"
+        exit 1
+        ;;
+    *)
+        echo -e "${RED}✗ 错误: 不支持的架构: $ARCH_RAW${NC}"
+        echo -e "${RED}  支持的架构: x86_64, arm64${NC}"
+        exit 1
+        ;;
 esac
 
 echo -e "${GREEN}系统: $OS $ARCH${NC}"
@@ -65,7 +113,7 @@ else
     # 5. 在线下载
     echo -e "\n${YELLOW}[2/4] 获取版本信息...${NC}"
     REPO="1186258278/OpenCodeChineseTranslation"
-    VERSION="v8.5.0" # 默认 fallback
+    VERSION="v8.6.0" # 默认 fallback
 
     if [ -n "$TARGET_VERSION" ]; then
         VERSION="$TARGET_VERSION"

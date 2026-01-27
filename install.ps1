@@ -1,4 +1,5 @@
 # OpenCode 汉化工具一键安装脚本 (Go CLI 版)
+# 支持: Windows x64/ARM64
 param(
     [string]$Version = ""
 )
@@ -11,17 +12,38 @@ function Write-Color($text, $color) {
 }
 
 Write-Color "==============================================" "Cyan"
-Write-Color "   OpenCode 汉化管理工具安装脚本 (v8.5.0)   " "Cyan"
+Write-Color "   OpenCode 汉化管理工具安装脚本 (v8.6.0)   " "Cyan"
 Write-Color "==============================================" "Cyan"
 
-# 1. 检测架构
-Write-Color "`n[1/4] 检测系统架构..." "Yellow"
+# 1. 系统兼容性检测
+Write-Color "`n[1/4] 检测系统兼容性..." "Yellow"
+
+# 检测 Windows 版本
+$osVersion = [System.Environment]::OSVersion.Version
+$isWindows10OrLater = $osVersion.Major -ge 10
+if (-not $isWindows10OrLater) {
+    Write-Color "警告: 检测到 Windows $($osVersion.Major)，推荐使用 Windows 10 或更高版本" "Yellow"
+}
+
+# 检测架构
 $arch = $env:PROCESSOR_ARCHITECTURE
 $targetArch = "amd64"
 if ($arch -eq "ARM64") {
     $targetArch = "arm64"
+} elseif ($arch -eq "x86") {
+    Write-Color "✗ 错误: 不支持 32 位 Windows 系统" "Red"
+    Write-Color "  OpenCode 仅支持 64 位系统 (x64/ARM64)" "Red"
+    exit 1
 }
-Write-Color "架构: Windows $targetArch" "Green"
+
+# 检测 PowerShell 版本
+$psVersion = $PSVersionTable.PSVersion.Major
+if ($psVersion -lt 5) {
+    Write-Color "警告: PowerShell 版本较低 ($psVersion)，推荐升级到 PowerShell 5.1+" "Yellow"
+}
+
+Write-Color "系统: Windows $($osVersion.Major).$($osVersion.Minor) ($arch)" "Green"
+Write-Color "PowerShell: $psVersion" "Green"
 
 # 2. 准备安装目录
 $installDir = "$env:USERPROFILE\.opencode-i18n"
@@ -43,7 +65,7 @@ if (Test-Path $localFile) {
     # 4. 在线下载
     Write-Color "`n[2/4] 获取版本信息..." "Yellow"
     $repo = "1186258278/OpenCodeChineseTranslation"
-    $tagName = "v8.5.0" # 默认版本作为后备
+    $tagName = "v8.6.0" # 默认版本作为后备
 
     if ($Version) {
         $tagName = $Version
@@ -58,9 +80,6 @@ if (Test-Path $localFile) {
         } catch {
             Write-Color "获取最新版本失败，将使用默认版本: $tagName" "Yellow"
         }
-    }
-    } catch {
-        Write-Color "获取最新版本失败，将尝试使用默认版本: $tagName" "Yellow"
     }
 
     # 尝试使用 CDN 加速下载 (jsDelivr)

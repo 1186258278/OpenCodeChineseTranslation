@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"opencode-cli/internal/core"
@@ -147,38 +146,14 @@ func checkGitUpdate(dir string) bool {
 
 // getProjectDir 获取项目目录
 func getProjectDir() (string, error) {
-	// 从可执行文件路径查找
-	exePath, err := os.Executable()
-	if err == nil {
-		exeDir := filepath.Dir(exePath)
-		// 向上查找 opencode-i18n 目录
-		for currentDir := exeDir; currentDir != filepath.Dir(currentDir); currentDir = filepath.Dir(currentDir) {
-			if _, err := os.Stat(filepath.Join(currentDir, "opencode-i18n")); err == nil {
-				return currentDir, nil
-			}
-		}
-	}
-
-	// 从工作目录查找
-	wd, err := os.Getwd()
-	if err == nil {
-		for currentDir := wd; currentDir != filepath.Dir(currentDir); currentDir = filepath.Dir(currentDir) {
-			if _, err := os.Stat(filepath.Join(currentDir, "opencode-i18n")); err == nil {
-				return currentDir, nil
-			}
-		}
-	}
-
-	return "", fmt.Errorf("project not found")
+	// 直接复用 core 包的实现
+	return core.GetProjectDir()
 }
 
 // getOpencodeDir 获取 OpenCode 源码目录
 func getOpencodeDir() (string, error) {
-	projectDir, err := getProjectDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(projectDir, "opencode-zh-CN"), nil
+	// 直接复用 core 包的实现
+	return core.GetOpencodeDir()
 }
 
 // calculateMenuStartRow 计算菜单区域的起始行

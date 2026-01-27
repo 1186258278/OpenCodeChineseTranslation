@@ -17,7 +17,7 @@ import (
 
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
-	Short: "Deploy opencode to system PATH",
+	Short: "部署到系统 PATH",
 	Long:  "Deploy the compiled opencode binary to system PATH for global access",
 	Run: func(cmd *cobra.Command, args []string) {
 		createShortcut, _ := cmd.Flags().GetBool("shortcut")
@@ -193,23 +193,17 @@ func runDeploy(createShortcut bool) {
 }
 
 // getDeployDir 获取部署目录
+// 三端统一使用 ~/.opencode-i18n/bin，与安装脚本保持一致
 func getDeployDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 
-	if runtime.GOOS == "windows" {
-		// Windows: %LOCALAPPDATA%\OpenCode\bin
-		localAppData := os.Getenv("LOCALAPPDATA")
-		if localAppData == "" {
-			localAppData = filepath.Join(homeDir, "AppData", "Local")
-		}
-		return filepath.Join(localAppData, "OpenCode", "bin"), nil
-	}
-
-	// Unix: ~/.local/bin
-	return filepath.Join(homeDir, ".local", "bin"), nil
+	// 统一目录：~/.opencode-i18n/bin
+	// Windows: %USERPROFILE%\.opencode-i18n\bin
+	// macOS/Linux: ~/.opencode-i18n/bin
+	return filepath.Join(homeDir, ".opencode-i18n", "bin"), nil
 }
 
 // addToPath 检查并提示/自动添加 PATH

@@ -6,6 +6,7 @@
     ">⋯ Loading</span>": ">⋯ 加载中</span>",
     ">✓ Enabled</span>": ">✓ 已启用</span>",
     ">○ Disabled</span>": ">○ 已禁用</span>",
+    "title: \"toggle\"": "title: \"切换\"",
     "console.error(\"Failed to refresh MCP status: no data returned\")": "console.error(\"刷新 MCP 状态失败：未返回数据\")",
     "console.error(\"Failed to toggle MCP:\", error)": "console.error(\"切换 MCP 失败：\", error)"
   },

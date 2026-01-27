@@ -16,7 +16,7 @@
     "title={`Glob \"`": "title={`通配符 \"`",
     "title={`Grep \"`": "title={`搜索 \"`",
     "title={`List ` + normalizePath": "title={`列出 ` + normalizePath",
-    "Edit {normalizePath": "编辑 {normalizePath}",
+    "Edit {normalizePath": "编辑 {normalizePath",
     "Call tool": "调用工具",
     "} Task": "} 任务",
     "WebFetch ": "网页获取 ",

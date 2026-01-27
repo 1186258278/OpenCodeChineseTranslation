@@ -11,7 +11,7 @@ import (
 
 var packageCmd = &cobra.Command{
 	Use:   "package",
-	Short: "Package OpenCode for release",
+	Short: "打包发布版 (支持六平台)",
 	Run: func(cmd *cobra.Command, args []string) {
 		platform, _ := cmd.Flags().GetString("platform")
 		all, _ := cmd.Flags().GetBool("all")
@@ -34,7 +34,15 @@ var packageCmd = &cobra.Command{
 
 		var platforms []string
 		if all {
-			platforms = []string{"windows-x64", "darwin-arm64", "linux-x64"}
+			// v8.5.0+ 支持的全部 6 个平台
+			platforms = []string{
+				"windows-x64",
+				"windows-arm64",
+				"darwin-arm64",
+				"darwin-x64",
+				"linux-x64",
+				"linux-arm64",
+			}
 		} else if platform != "" {
 			platforms = []string{platform}
 		} else {

@@ -106,13 +106,16 @@ opencode-cli download
 **每日构建 (Nightly)** - 推荐开发者/尝鲜用户：
 访问 [Nightly 页面](https://github.com/1186258278/OpenCodeChineseTranslation/releases/tag/nightly) 下载最新自动构建版本。
 
-| 平台 | 管理工具 (CLI) | 汉化版 OpenCode |
-|------|----------------|-----------------|
-| Windows x64 | [opencode-cli-windows-amd64.exe](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest/download/opencode-cli-windows-amd64.exe) | [下载最新稳定版](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest) |
-| macOS Apple Silicon | [opencode-cli-darwin-arm64](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest/download/opencode-cli-darwin-arm64) | [下载最新稳定版](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest) |
-| Linux x64 | [opencode-cli-linux-amd64](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest/download/opencode-cli-linux-amd64) | [下载最新稳定版](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest) |
+| 平台 | 管理工具 (CLI) |
+|------|----------------|
+| Windows x64 | [opencode-cli-windows-amd64.exe](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest/download/opencode-cli-windows-amd64.exe) |
+| Windows ARM64 | [opencode-cli-windows-arm64.exe](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest/download/opencode-cli-windows-arm64.exe) |
+| macOS Apple Silicon | [opencode-cli-darwin-arm64](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest/download/opencode-cli-darwin-arm64) |
+| macOS Intel | [opencode-cli-darwin-amd64](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest/download/opencode-cli-darwin-amd64) |
+| Linux x64 | [opencode-cli-linux-amd64](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest/download/opencode-cli-linux-amd64) |
+| Linux ARM64 | [opencode-cli-linux-arm64](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest/download/opencode-cli-linux-arm64) |
 
-> 💡 **提示**: Nightly 版本构建链接在 [Nightly Release 页面](https://github.com/1186258278/OpenCodeChineseTranslation/releases/tag/nightly) 的 Assets 中。
+> 💡 **提示**: 汉化版 OpenCode 请在 [Releases 页面](https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest) 下载 ZIP 包。[Nightly 构建](https://github.com/1186258278/OpenCodeChineseTranslation/releases/tag/nightly) 每小时更新。
 
 ---
 
@@ -137,12 +140,15 @@ opencode-cli download
 | 命令 | 说明 |
 |------|------|
 | `opencode-cli` | 启动交互式管理菜单 |
-| `opencode-cli download` | 📦 下载预编译汉化版 |
+| `opencode-cli download` | 下载预编译汉化版，无需本地编译环境 |
+| `opencode-cli env-install` | 一键安装编译环境 (Git/Node.js/Bun) |
 | `opencode-cli update` | 更新 OpenCode 源码 |
 | `opencode-cli apply` | 应用汉化补丁 |
 | `opencode-cli verify` | 验证汉化配置完整性 |
 | `opencode-cli build` | 编译构建 OpenCode |
-| `opencode-cli deploy --shortcut` | 部署并创建桌面快捷方式 |
+| `opencode-cli deploy` | 部署到系统 PATH |
+| `opencode-cli diagnose` | **诊断修复** 版本冲突、环境问题 |
+| `opencode-cli uninstall` | 卸载清理，还原干净环境 |
 | `opencode-cli antigravity` | 配置 Antigravity 本地 AI 代理 |
 
 ---
@@ -159,18 +165,74 @@ opencode-cli download
 
 ---
 
+## 环境要求
+
+**使用预编译版（推荐新手）**：无需任何环境，直接下载运行。
+
+**本地编译**：
+- Git (用于拉取源码)
+- Node.js 18+ (OpenCode 依赖)
+- Bun 1.3+ (构建工具)
+
+> 没装这些？运行 `opencode-cli env-install` 一键搞定。
+
+---
+
 ## 常见问题 (FAQ)
 
-### Q: 为什么安装/部署后运行 OpenCode 还是英文版？
-A: 这通常是因为您的系统中存在多个 OpenCode 版本（例如通过 npm、Scoop 或 Chocolatey 安装的官方版），且系统环境变量 (PATH) 优先加载了旧版本。
+### 遇到问题？先运行诊断！
+```bash
+opencode-cli diagnose
+```
+自动检测版本冲突、环境缺失、PATH 问题，一键修复。
 
-**解决方法**：
-1. 运行 `npm uninstall -g opencode` 卸载官方版。
-2. 或者在终端运行 `Get-Command opencode -All` (Windows) 或 `which -a opencode` (Mac/Linux) 查看所有版本路径，手动删除非汉化版。
-3. 重启终端以刷新环境变量缓存。
+---
 
-### Q: 为什么每次 OpenCode 更新后汉化就失效了？
-A: OpenCode 更新频繁，源码变动会导致汉化补丁无法匹配。请使用 `opencode-cli` 更新源码并重新应用汉化，或者下载最新的 Nightly 版本。
+### Q: 运行 opencode 还是英文版？
+运行 `opencode-cli diagnose` 自动检测并清理冲突版本。
+
+手动处理：
+```bash
+npm uninstall -g opencode          # 卸载 npm 版
+Get-Command opencode -All          # Windows 查看所有位置
+which -a opencode                  # macOS/Linux
+```
+
+### Q: 编译失败？
+```bash
+opencode-cli env-install    # 一键安装 Git/Node/Bun
+opencode-cli download       # 或直接下载预编译版（不用装环境）
+```
+
+### Q: 汉化失效了？
+下载 [Nightly 版本](https://github.com/1186258278/OpenCodeChineseTranslation/releases/tag/nightly)（每小时自动跟进官方更新）
+
+### Q: 安装目录在哪？
+三端统一目录结构 `~/.opencode-i18n/`：
+- `bin/` - CLI 工具和汉化版 OpenCode
+- `opencode/` - OpenCode 源码
+- `build/` - 编译输出
+
+Windows 实际路径: `%USERPROFILE%\.opencode-i18n\`
+
+### Q: 本地开发怎么配置？
+开发者可通过环境变量覆盖默认路径：
+```bash
+export OPENCODE_SOURCE_DIR=/path/to/opencode   # 源码目录（覆盖 ~/.opencode-i18n/opencode）
+export OPENCODE_BUILD_DIR=/path/to/bin         # 编译输出（覆盖 ~/.opencode-i18n/build）
+```
+不设置环境变量时，统一使用 `~/.opencode-i18n/` 目录。
+
+### Q: 想卸载干净？
+```bash
+opencode-cli uninstall --all
+```
+
+### Q: macOS 提示"无法验证开发者"？
+```bash
+xattr -cr /path/to/opencode
+```
+或运行 `opencode-cli diagnose --fix` 自动修复。
 
 ---
 
