@@ -115,10 +115,14 @@ jobs:
           git clone --depth 1 --branch dev https://github.com/anomalyco/opencode.git opencode-zh-CN
 
       - name: Apply Chinese translation
+        env:
+          OPENCODE_SOURCE_DIR: ${{ github.workspace }}/opencode-zh-CN
         run: |
           ./opencode-cli apply
 
       - name: Build OpenCode
+        env:
+          OPENCODE_SOURCE_DIR: ${{ github.workspace }}/opencode-zh-CN
         run: |
           ./opencode-cli build --platform ${{ matrix.platform }} --deploy=false
 
