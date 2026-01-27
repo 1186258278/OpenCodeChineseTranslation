@@ -219,10 +219,14 @@ jobs:
           git clone --depth 1 --branch ${{ env.UPSTREAM_BRANCH }} https://github.com/${{ env.UPSTREAM_REPO }}.git opencode-zh-CN
 
       - name: Apply Chinese translation
+        env:
+          OPENCODE_SOURCE_DIR: ${{ github.workspace }}/opencode-zh-CN
         run: |
           ./opencode-cli apply
 
       - name: Build OpenCode
+        env:
+          OPENCODE_SOURCE_DIR: ${{ github.workspace }}/opencode-zh-CN
         run: |
           ./opencode-cli build --platform ${{ matrix.platform }} --deploy=false
 
