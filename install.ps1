@@ -5,7 +5,17 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+# 修复中文乱码：强制设置控制台编码为 UTF-8
+try {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+    $OutputEncoding = [System.Text.Encoding]::UTF8
+    # 尝试设置代码页 (部分旧版 Windows 需要)
+    $null = cmd /c chcp 65001 2>$null
+} catch {
+    # 忽略编码设置错误，继续执行
+}
 
 function Write-Color($text, $color) {
     Write-Host $text -ForegroundColor $color
