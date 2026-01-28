@@ -85,6 +85,10 @@
             --code-text: #1C1C1E;
             --browser-bg: #FFFFFF;
             --browser-header: #F5F5F7;
+            --btn-secondary-bg: #E5E5EA;
+            --btn-secondary-hover: #D1D1D6;
+            --btn-secondary-text: #1C1C1E;
+            --btn-secondary-border: rgba(0, 0, 0, 0.1);
         }
         
         /* ========== 暗色模式 ========== */
@@ -110,6 +114,10 @@
             --code-text: #E5E5EA;
             --browser-bg: #1C1C1E;
             --browser-header: rgba(44, 44, 46, 0.95);
+            --btn-secondary-bg: rgba(255, 255, 255, 0.1);
+            --btn-secondary-hover: rgba(255, 255, 255, 0.2);
+            --btn-secondary-text: #FFFFFF;
+            --btn-secondary-border: rgba(255, 255, 255, 0.1);
         }
         
         * {
@@ -215,6 +223,17 @@
         }
         .btn-ios:active {
             transform: scale(0.97);
+        }
+        
+        /* 次级按钮 - 自适应主题 */
+        .btn-secondary {
+            background: var(--btn-secondary-bg);
+            color: var(--btn-secondary-text);
+            border: 1px solid var(--btn-secondary-border);
+            transition: all 0.2s ease;
+        }
+        .btn-secondary:hover {
+            background: var(--btn-secondary-hover);
         }
         
         .ripple {
@@ -749,7 +768,7 @@
             
             <div class="border-t pt-8 text-center" style="border-color: var(--glass-tertiary-border);">
                 <p class="text-muted text-xs">
-                    &copy; 2026 OpenCode Chinese Translation Team. 干净如水晶 · 轻盈如羽毛 · 精致如苹果 · 流畅如丝绸
+                    &copy; 2026 OpenCode Chinese Translation Team
                 </p>
             </div>
         </div>
@@ -1020,7 +1039,7 @@
                 const asset = releaseData.assets.find(a => a.name.includes('opencode-cli-') && a.name.includes(p.matchId));
                 if (asset) {
                     const sizeMB = (asset.size / 1024 / 1024).toFixed(1);
-                    grid.innerHTML += createAssetCard(p, asset, sizeMB, '下载工具', 'glass-tertiary hover:bg-white/10');
+                    grid.innerHTML += createAssetCard(p, asset, sizeMB, '下载工具', 'btn-secondary');
                 }
             });
             
