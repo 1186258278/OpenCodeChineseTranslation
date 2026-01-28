@@ -444,7 +444,7 @@ func runInstallCommand(name string, args ...string) error {
 // CheckSystemCompatibility 检查系统兼容性
 func CheckSystemCompatibility() (bool, string) {
 	platform := core.DetectPlatform()
-	
+
 	// 支持的平台列表
 	supportedPlatforms := map[string]bool{
 		"windows-x64":   true,

@@ -73,7 +73,7 @@ func getStatus() tui.StatusInfo {
 
 	// 判断文件是否存在
 	sourceExists := core.DirExists(opencodeDir)
-	
+
 	// 汉化配置：使用 HasI18nConfig()，始终有内嵌资源可用
 	i18nExists := core.HasI18nConfig()
 
@@ -211,13 +211,13 @@ func executeAction(action string) {
 		i18nDir, _ := core.GetI18nDir()
 		binDir, _ := core.GetBinDir()
 		deployDir, _ := getDeployDir()
-		
+
 		fmt.Println("\n  [统一安装目录]")
 		fmt.Printf("    根目录: %s/.opencode-i18n/\n", homeDir)
 		fmt.Printf("    部署目录: %s\n", deployDir)
 		fmt.Printf("    源码目录: %s\n", opencodeDir)
 		fmt.Printf("    构建目录: %s\n", binDir)
-		
+
 		fmt.Println("\n  [开发环境]")
 		fmt.Printf("    项目目录: %s\n", projectDir)
 		if i18nDir != "" {
@@ -225,7 +225,7 @@ func executeAction(action string) {
 		} else {
 			fmt.Println("    汉化目录: 使用内嵌资源")
 		}
-		
+
 		// 检查目录状态
 		fmt.Println("\n  [目录状态]")
 		if core.DirExists(opencodeDir) {
