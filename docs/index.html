@@ -842,38 +842,39 @@
             
             // 降级方案：clip-path 圆形扩散动画
             const overlay = document.createElement('div');
-            overlay.className = 'theme-transition-overlay';
             overlay.style.cssText = `
                 position: fixed;
                 inset: 0;
                 z-index: 99999;
                 pointer-events: none;
                 background: ${next === 'dark' 
-                    ? 'linear-gradient(180deg, #000000 0%, #1C1C1E 100%)' 
-                    : 'linear-gradient(180deg, #F2F2F7 0%, #E5E5EA 100%)'};
+                    ? '#000000' 
+                    : '#F2F2F7'};
                 clip-path: circle(0px at ${x}px ${y}px);
-                transition: clip-path 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: clip-path 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             `;
             
             document.body.appendChild(overlay);
             
-            // 触发重绘后开始动画
+            // 触发动画
             requestAnimationFrame(() => {
-                overlay.style.clipPath = `circle(${maxRadius}px at ${x}px ${y}px)`;
+                requestAnimationFrame(() => {
+                    overlay.style.clipPath = `circle(${maxRadius}px at ${x}px ${y}px)`;
+                });
             });
             
-            // 动画进行到一半时切换主题（在 overlay 下面）
+            // 动画完成后：先切换主题，等一帧渲染，再移除遮罩
             setTimeout(() => {
                 html.setAttribute('data-theme', next);
                 localStorage.setItem('theme', next);
-            }, 300);
-            
-            // 动画完成后淡出并移除遮罩
-            setTimeout(() => {
-                overlay.style.transition = 'opacity 0.2s ease';
-                overlay.style.opacity = '0';
-                setTimeout(() => overlay.remove(), 200);
-            }, 600);
+                
+                // 等待浏览器完成重绘
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        overlay.remove();
+                    });
+                });
+            }, 500);
         }
         
         // 监听系统主题变化
