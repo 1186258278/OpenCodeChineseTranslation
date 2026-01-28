@@ -981,6 +981,8 @@
         }
 
         function createAssetCard(platform, asset, size, btnText, btnClass = 'bg-primary hover:bg-blue-600') {
+            // 判断是否是 outline 按钮，如果不是才加 text-white
+            const textColorClass = btnClass.includes('outline') ? '' : 'text-white';
             return `
                 <div class="glass-tertiary rounded-2xl p-5 hover-lift hover-glow transition-all duration-300 group gradient-border">
                     <div class="flex items-start justify-between mb-5">
@@ -997,7 +999,7 @@
                     
                     <div class="flex flex-col gap-2">
                         <a href="${asset.browser_download_url}" onclick="startDownload(this)" 
-                           class="btn-ios ripple w-full ${btnClass} text-white text-xs font-bold py-3.5 rounded-xl text-center transition-all shadow-lg flex items-center justify-center gap-2">
+                           class="btn-ios ripple w-full ${btnClass} ${textColorClass} text-xs font-bold py-3.5 rounded-xl text-center transition-all shadow-lg flex items-center justify-center gap-2">
                             <i class="fa-solid fa-download"></i> <span>${btnText}</span>
                         </a>
                     </div>
