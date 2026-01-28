@@ -17,24 +17,28 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 主题初始化（防止闪烁） -->
+    <script>
+        (function() {
+            const saved = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = saved || (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        // iOS 色彩系统
                         primary: '#007AFF',
                         secondary: '#5856D6',
                         accent: '#AF52DE',
                         success: '#34C759',
                         warning: '#FF9500',
                         danger: '#FF3B30',
-                        // 暗色模式
-                        dark: {
-                            bg: '#000000',
-                            card: 'rgba(44,44,46,0.8)',
-                            border: 'rgba(255,255,255,0.1)',
-                        }
                     },
                 }
             }
@@ -43,6 +47,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
+        /* ========== CSS 变量主题系统 ========== */
         :root {
             /* 缓动函数库 */
             --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -57,14 +62,67 @@
             --ios-green: #34C759;
         }
         
+        /* ========== 亮色模式 (默认) ========== */
+        [data-theme="light"] {
+            --bg-primary: linear-gradient(180deg, #F2F2F7 0%, #E5E5EA 100%);
+            --bg-body: #F2F2F7;
+            --glass-primary-bg: rgba(255, 255, 255, 0.75);
+            --glass-primary-border: rgba(0, 0, 0, 0.08);
+            --glass-primary-shadow: rgba(0, 0, 0, 0.08);
+            --glass-secondary-bg: rgba(255, 255, 255, 0.65);
+            --glass-secondary-border: rgba(0, 0, 0, 0.06);
+            --glass-tertiary-bg: rgba(255, 255, 255, 0.5);
+            --glass-tertiary-border: rgba(0, 0, 0, 0.05);
+            --text-primary: #1C1C1E;
+            --text-secondary: #3C3C43;
+            --text-tertiary: #8E8E93;
+            --text-inverse: #FFFFFF;
+            --glow-blue: rgba(0, 122, 255, 0.15);
+            --glow-purple: rgba(88, 86, 214, 0.12);
+            --glow-pink: rgba(255, 45, 85, 0.08);
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --code-bg: rgba(0, 0, 0, 0.05);
+            --code-text: #1C1C1E;
+            --browser-bg: #FFFFFF;
+            --browser-header: #F5F5F7;
+        }
+        
+        /* ========== 暗色模式 ========== */
+        [data-theme="dark"] {
+            --bg-primary: linear-gradient(180deg, #000000 0%, #1C1C1E 100%);
+            --bg-body: #000000;
+            --glass-primary-bg: rgba(44, 44, 46, 0.75);
+            --glass-primary-border: rgba(255, 255, 255, 0.12);
+            --glass-primary-shadow: rgba(0, 0, 0, 0.3);
+            --glass-secondary-bg: rgba(44, 44, 46, 0.65);
+            --glass-secondary-border: rgba(255, 255, 255, 0.08);
+            --glass-tertiary-bg: rgba(58, 58, 60, 0.6);
+            --glass-tertiary-border: rgba(255, 255, 255, 0.06);
+            --text-primary: #FFFFFF;
+            --text-secondary: #EBEBF5;
+            --text-tertiary: #8E8E93;
+            --text-inverse: #1C1C1E;
+            --glow-blue: rgba(0, 122, 255, 0.4);
+            --glow-purple: rgba(88, 86, 214, 0.35);
+            --glow-pink: rgba(255, 45, 85, 0.25);
+            --card-bg: rgba(44, 44, 46, 0.8);
+            --code-bg: rgba(0, 0, 0, 0.3);
+            --code-text: #E5E5EA;
+            --browser-bg: #1C1C1E;
+            --browser-header: rgba(44, 44, 46, 0.95);
+        }
+        
         * {
             -webkit-tap-highlight-color: transparent;
         }
         
         body { 
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(180deg, #000000 0%, #1C1C1E 100%);
+            background: var(--bg-primary);
+            background-color: var(--bg-body);
             min-height: 100vh;
+            color: var(--text-primary);
+            transition: background 0.4s ease, color 0.3s ease;
         }
         
         /* ========== 彩色光晕装饰 ========== */
@@ -72,24 +130,25 @@
             position: fixed;
             border-radius: 50%;
             filter: blur(100px);
-            opacity: 0.4;
+            opacity: 0.6;
             pointer-events: none;
             z-index: 0;
             animation: float 25s ease-in-out infinite;
+            transition: opacity 0.5s ease;
         }
         .glow-blue {
             width: 50%;
             height: 50%;
             top: -20%;
             left: -10%;
-            background: radial-gradient(circle, rgba(0, 122, 255, 0.4) 0%, transparent 70%);
+            background: radial-gradient(circle, var(--glow-blue) 0%, transparent 70%);
         }
         .glow-purple {
             width: 40%;
             height: 40%;
             top: 30%;
             right: -15%;
-            background: radial-gradient(circle, rgba(88, 86, 214, 0.35) 0%, transparent 70%);
+            background: radial-gradient(circle, var(--glow-purple) 0%, transparent 70%);
             animation-delay: -8s;
         }
         .glow-pink {
@@ -97,7 +156,7 @@
             height: 35%;
             bottom: 10%;
             left: 20%;
-            background: radial-gradient(circle, rgba(255, 45, 85, 0.25) 0%, transparent 70%);
+            background: radial-gradient(circle, var(--glow-pink) 0%, transparent 70%);
             animation-delay: -15s;
         }
         
@@ -108,30 +167,30 @@
         }
         
         /* ========== 玻璃效果层级 ========== */
-        /* 一级玻璃 - 导航栏/浮窗 */
         .glass-primary {
-            background: rgba(44, 44, 46, 0.75);
+            background: var(--glass-primary-bg);
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-primary-border);
+            box-shadow: 0 8px 32px var(--glass-primary-shadow);
+            transition: all 0.3s ease;
         }
         
-        /* 二级玻璃 - 卡片/面板 */
         .glass-secondary {
-            background: rgba(44, 44, 46, 0.65);
+            background: var(--glass-secondary-bg);
             backdrop-filter: blur(16px) saturate(150%);
             -webkit-backdrop-filter: blur(16px) saturate(150%);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--glass-secondary-border);
+            box-shadow: 0 4px 24px var(--glass-primary-shadow);
+            transition: all 0.3s ease;
         }
         
-        /* 三级玻璃 - 输入框/按钮 */
         .glass-tertiary {
-            background: rgba(58, 58, 60, 0.6);
+            background: var(--glass-tertiary-bg);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--glass-tertiary-border);
+            transition: all 0.3s ease;
         }
         
         /* ========== 悬浮微交互 ========== */
@@ -140,12 +199,12 @@
         }
         .hover-lift:hover {
             transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+            box-shadow: 0 12px 40px var(--glass-primary-shadow);
         }
         
         .hover-glow:hover {
-            box-shadow: 0 0 30px rgba(0, 122, 255, 0.3);
-            border-color: rgba(0, 122, 255, 0.5);
+            box-shadow: 0 0 30px rgba(0, 122, 255, 0.25);
+            border-color: rgba(0, 122, 255, 0.4);
         }
         
         /* ========== 按钮系统 ========== */
@@ -158,7 +217,6 @@
             transform: scale(0.97);
         }
         
-        /* 水波纹点击效果 */
         .ripple {
             position: relative;
             overflow: hidden;
@@ -212,48 +270,62 @@
             inset: 0;
             padding: 1px;
             border-radius: inherit;
-            background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05));
+            background: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0.05));
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             mask-composite: exclude;
             pointer-events: none;
         }
         
-        /* ========== 呼吸光效 ========== */
-        @keyframes breathe {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.4); }
-            50% { box-shadow: 0 0 0 8px rgba(0, 122, 255, 0); }
+        /* ========== 主题切换按钮 ========== */
+        .theme-toggle {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .theme-toggle:hover {
+            background: rgba(0, 122, 255, 0.1);
+        }
+        .theme-toggle i {
+            font-size: 18px;
+            transition: all 0.4s var(--ease-spring);
         }
         
-        .pulse-glow {
-            animation: breathe 2.5s ease-in-out infinite;
-        }
+        [data-theme="light"] .theme-toggle .fa-moon { display: inline; }
+        [data-theme="light"] .theme-toggle .fa-sun { display: none; }
+        [data-theme="dark"] .theme-toggle .fa-moon { display: none; }
+        [data-theme="dark"] .theme-toggle .fa-sun { display: inline; color: #FFD60A; }
         
         /* ========== Premium Browser Mockup ========== */
         .browser-mockup {
             border-radius: 20px;
-            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.5), 
-                        0 0 60px rgba(0, 122, 255, 0.1);
-            background: rgba(28, 28, 30, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.3);
+            background: var(--browser-bg);
+            border: 1px solid var(--glass-secondary-border);
             overflow: hidden;
             transform: perspective(1000px) rotateX(2deg);
             transition: all 0.5s var(--ease-out);
         }
         .browser-mockup:hover { 
             transform: perspective(1000px) rotateX(0deg) translateY(-8px);
-            box-shadow: 0 60px 120px -20px rgba(0, 0, 0, 0.6),
-                        0 0 80px rgba(0, 122, 255, 0.15);
+            box-shadow: 0 60px 120px -20px rgba(0, 0, 0, 0.4);
         }
         
         .browser-header {
-            background: rgba(44, 44, 46, 0.95);
+            background: var(--browser-header);
             padding: 14px 20px;
             display: flex;
             align-items: center;
             gap: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid var(--glass-tertiary-border);
         }
-        .dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 1px 2px rgba(0,0,0,0.3); }
+        .dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 1px 2px rgba(0,0,0,0.2); }
         .dot-red { background: linear-gradient(180deg, #ff6058 0%, #e0443e 100%); }
         .dot-yellow { background: linear-gradient(180deg, #ffbd2e 0%, #dea123 100%); }
         .dot-green { background: linear-gradient(180deg, #28ca42 0%, #1aab29 100%); }
@@ -261,12 +333,16 @@
         /* ========== Tab 样式 ========== */
         .tab-btn {
             transition: all 0.25s var(--ease-out);
+            color: var(--text-tertiary);
+        }
+        .tab-btn:hover {
+            color: var(--text-primary);
         }
         .tab-btn.active {
             background: rgba(0, 122, 255, 0.15);
-            color: #5AC8FA;
+            color: #007AFF;
             border-color: rgba(0, 122, 255, 0.4);
-            box-shadow: 0 0 20px rgba(0, 122, 255, 0.15);
+            box-shadow: 0 0 20px rgba(0, 122, 255, 0.1);
         }
 
         /* ========== 下载动画 ========== */
@@ -284,11 +360,12 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { 
-            background: rgba(255, 255, 255, 0.15); 
+            background: var(--text-tertiary); 
             border-radius: 3px; 
+            opacity: 0.5;
         }
         ::-webkit-scrollbar-thumb:hover { 
-            background: rgba(255, 255, 255, 0.25); 
+            opacity: 0.8;
         }
         
         /* ========== 文字渐变 ========== */
@@ -299,6 +376,12 @@
             background-clip: text;
         }
         
+        /* ========== 代码块 ========== */
+        .code-block {
+            background: var(--code-bg);
+            color: var(--code-text);
+        }
+        
         /* ========== 无障碍 ========== */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
@@ -307,14 +390,18 @@
             }
         }
         
-        /* Focus 状态 */
         :focus-visible {
             outline: 2px solid #007AFF;
             outline-offset: 2px;
         }
+        
+        /* ========== 文本颜色类 ========== */
+        .text-main { color: var(--text-primary); }
+        .text-sub { color: var(--text-secondary); }
+        .text-muted { color: var(--text-tertiary); }
     </style>
 </head>
-<body class="text-gray-100 antialiased selection:bg-primary/30 selection:text-white overflow-x-hidden">
+<body class="antialiased selection:bg-primary/30 selection:text-white overflow-x-hidden">
 
     <!-- 彩色光晕背景 -->
     <div class="glow-blob glow-blue"></div>
@@ -329,19 +416,34 @@
                     <div class="w-9 h-9 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-lg shadow-primary/30">
                         <i class="fa-solid fa-code text-white text-sm"></i>
                     </div>
-                    <span class="text-lg font-bold tracking-tight">OpenCode 
+                    <span class="text-lg font-bold tracking-tight text-main">OpenCode 
                         <span class="text-xs font-semibold ml-1.5 bg-gradient-to-r from-primary to-secondary text-white px-2 py-0.5 rounded-full">CN</span>
                     </span>
                 </div>
-                <div class="hidden md:flex items-center space-x-6">
-                    <a href="#features" class="text-sm font-medium text-gray-400 hover:text-white transition-colors">特性</a>
-                    <a href="#gallery" class="text-sm font-medium text-gray-400 hover:text-white transition-colors">预览</a>
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="#features" class="text-sm font-medium text-muted hover:text-main transition-colors px-3 py-2">特性</a>
+                    <a href="#gallery" class="text-sm font-medium text-muted hover:text-main transition-colors px-3 py-2">预览</a>
                     <a href="#install" class="btn-ios ripple text-sm font-semibold text-white bg-primary hover:bg-blue-600 px-5 py-2 rounded-full transition-all shadow-lg shadow-primary/30">
                         立即安装
                     </a>
-                    <a href="https://github.com/1186258278/OpenCodeChineseTranslation" target="_blank" class="text-gray-400 hover:text-white transition-colors">
+                    
+                    <!-- 主题切换按钮 -->
+                    <button onclick="toggleTheme()" class="theme-toggle glass-tertiary" title="切换日间/夜间模式">
+                        <i class="fa-solid fa-moon text-muted"></i>
+                        <i class="fa-solid fa-sun"></i>
+                    </button>
+                    
+                    <a href="https://github.com/1186258278/OpenCodeChineseTranslation" target="_blank" class="text-muted hover:text-main transition-colors">
                         <i class="fa-brands fa-github text-xl"></i>
                     </a>
+                </div>
+                
+                <!-- 移动端主题切换 -->
+                <div class="flex md:hidden items-center gap-2">
+                    <button onclick="toggleTheme()" class="theme-toggle glass-tertiary" title="切换模式">
+                        <i class="fa-solid fa-moon text-muted"></i>
+                        <i class="fa-solid fa-sun"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -354,22 +456,22 @@
             <a href="https://github.com/1186258278/OpenCodeChineseTranslation/releases/latest" target="_blank" 
                class="animate-in stagger-1 inline-flex items-center gap-2.5 px-4 py-2 rounded-full glass-tertiary text-sm font-medium mb-10 hover-lift group">
                 <span class="flex h-2 w-2 rounded-full bg-success animate-pulse shadow-lg shadow-success/50"></span>
-                <span id="latest-version" class="text-white">v8.6.0</span>
-                <span class="text-gray-400">已发布 · 每日构建</span>
-                <i class="fa-solid fa-arrow-right text-xs text-gray-500 group-hover:translate-x-1 transition-transform"></i>
+                <span id="latest-version" class="text-main">v8.6.0</span>
+                <span class="text-muted">已发布 · 每日构建</span>
+                <i class="fa-solid fa-arrow-right text-xs text-muted group-hover:translate-x-1 transition-transform"></i>
             </a>
             
             <!-- Main Title -->
-            <h1 class="animate-in stagger-2 text-5xl md:text-7xl font-extrabold mb-8 tracking-tight leading-[1.1]">
+            <h1 class="animate-in stagger-2 text-5xl md:text-7xl font-extrabold mb-8 tracking-tight leading-[1.1] text-main">
                 让 AI 编程助手<br>
                 <span class="text-gradient">更懂中国开发者</span>
             </h1>
             
             <!-- Subtitle -->
-            <p class="animate-in stagger-3 text-lg md:text-xl text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed">
+            <p class="animate-in stagger-3 text-lg md:text-xl text-sub mb-12 max-w-2xl mx-auto leading-relaxed">
                 OpenCode 全自动汉化发行版<br class="md:hidden">
                 每日同步上游源码，自动构建全平台中文版<br>
-                <span class="text-gray-500">消除语言障碍，开箱即用</span>
+                <span class="text-muted">消除语言障碍，开箱即用</span>
             </p>
             
             <!-- CTA Buttons -->
@@ -379,7 +481,7 @@
                     <span>开始使用</span>
                 </a>
                 <a href="https://github.com/1186258278/OpenCodeChineseTranslation" target="_blank" 
-                   class="btn-ios inline-flex items-center justify-center gap-2 glass-tertiary text-white font-medium px-8 py-4 rounded-2xl hover:bg-white/10 transition-all text-lg">
+                   class="btn-ios inline-flex items-center justify-center gap-2 glass-tertiary text-main font-medium px-8 py-4 rounded-2xl hover:bg-white/10 transition-all text-lg">
                     <i class="fa-brands fa-github"></i>
                     <span>查看源码</span>
                 </a>
@@ -391,14 +493,14 @@
     <section id="install" class="relative px-4 z-20 pb-24">
         <div class="max-w-5xl mx-auto glass-secondary rounded-3xl overflow-hidden hover-glow transition-all duration-500">
             <!-- Header -->
-            <div class="border-b border-white/5 p-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white/[0.02]">
+            <div class="border-b border-white/5 p-6 flex flex-col md:flex-row justify-between items-center gap-4" style="background: rgba(128,128,128,0.03);">
                 <div class="flex items-center gap-4 flex-wrap">
                     <!-- Channel Switcher -->
                     <div class="glass-tertiary p-1 rounded-xl flex text-xs font-bold">
                         <button onclick="switchChannel('stable')" id="chan-stable" class="px-4 py-2 rounded-lg bg-success/20 text-success border border-success/30 transition-all shadow-sm">
                             <i class="fa-solid fa-cube mr-1.5"></i> 正式版
                         </button>
-                        <button onclick="switchChannel('nightly')" id="chan-nightly" class="px-4 py-2 rounded-lg text-gray-400 hover:text-warning transition-all border border-transparent">
+                        <button onclick="switchChannel('nightly')" id="chan-nightly" class="px-4 py-2 rounded-lg text-muted hover:text-warning transition-all border border-transparent">
                             <i class="fa-solid fa-moon mr-1.5"></i> Nightly
                         </button>
                     </div>
@@ -413,16 +515,16 @@
                     </div>
                     
                     <div>
-                        <h3 class="text-xl font-bold text-white flex items-center gap-3">
+                        <h3 class="text-xl font-bold text-main flex items-center gap-3">
                             <span id="dash-version">v8.6.0</span>
-                            <span class="text-xs font-medium text-gray-500 bg-white/5 px-3 py-1 rounded-lg" id="dash-date">...</span>
+                            <span class="text-xs font-medium text-muted glass-tertiary px-3 py-1 rounded-lg" id="dash-date">...</span>
                         </h3>
                     </div>
                 </div>
                 
                 <div class="flex gap-3">
                     <a href="https://github.com/1186258278/OpenCodeChineseTranslation" target="_blank" 
-                       class="btn-ios text-sm glass-tertiary hover:bg-white/10 px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 font-medium">
+                       class="btn-ios text-sm glass-tertiary hover:bg-white/10 px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 font-medium text-main">
                         <i class="fa-brands fa-github"></i> GitHub
                     </a>
                     <a href="https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation" target="_blank" 
@@ -434,11 +536,11 @@
 
             <!-- Tabs -->
             <div class="p-0">
-                <div class="flex border-b border-white/5 bg-black/20">
-                    <button onclick="switchInstallTab('script')" id="tab-btn-script" class="flex-1 py-4 text-sm font-semibold text-white border-b-2 border-primary bg-primary/5 transition-all">
+                <div class="flex border-b" style="border-color: var(--glass-tertiary-border); background: rgba(0,0,0,0.05);">
+                    <button onclick="switchInstallTab('script')" id="tab-btn-script" class="flex-1 py-4 text-sm font-semibold text-main border-b-2 border-primary bg-primary/5 transition-all">
                         <i class="fa-solid fa-terminal mr-2"></i> 脚本安装 <span class="text-xs text-primary/80">(推荐)</span>
                     </button>
-                    <button onclick="switchInstallTab('offline')" id="tab-btn-offline" class="flex-1 py-4 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-white hover:bg-white/5 transition-all">
+                    <button onclick="switchInstallTab('offline')" id="tab-btn-offline" class="flex-1 py-4 text-sm font-medium text-muted border-b-2 border-transparent hover:text-main hover:bg-white/5 transition-all">
                         <i class="fa-solid fa-box-archive mr-2"></i> 离线包下载
                     </button>
                 </div>
@@ -448,25 +550,25 @@
                     <div class="flex justify-center mb-8">
                         <div class="glass-tertiary p-1 rounded-xl flex text-xs font-medium">
                             <button onclick="setSource('github')" id="src-btn-github" class="px-5 py-2 rounded-lg bg-primary text-white shadow-lg shadow-primary/20 transition-all">GitHub 源</button>
-                            <button onclick="setSource('gitee')" id="src-btn-gitee" class="px-5 py-2 rounded-lg text-gray-400 hover:text-white transition-all">Gitee 国内加速</button>
+                            <button onclick="setSource('gitee')" id="src-btn-gitee" class="px-5 py-2 rounded-lg text-muted hover:text-main transition-all">Gitee 国内加速</button>
                         </div>
                     </div>
 
                     <div class="grid gap-5 max-w-3xl mx-auto">
                         <!-- Windows -->
                         <div class="glass-tertiary rounded-2xl overflow-hidden group hover:border-primary/30 hover-lift">
-                            <div class="flex items-center justify-between px-5 py-3.5 bg-white/[0.02] border-b border-white/5">
+                            <div class="flex items-center justify-between px-5 py-3.5 border-b" style="border-color: var(--glass-tertiary-border); background: rgba(128,128,128,0.03);">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
                                         <i class="fa-brands fa-windows text-blue-400"></i>
                                     </div>
-                                    <span class="font-semibold text-sm">Windows</span>
-                                    <span class="text-xs text-gray-500">PowerShell</span>
+                                    <span class="font-semibold text-sm text-main">Windows</span>
+                                    <span class="text-xs text-muted">PowerShell</span>
                                 </div>
                             </div>
-                            <div class="p-5 relative">
-                                <code id="cmd-win" class="text-sm text-blue-300/90 font-mono break-all block pr-20 leading-relaxed">irm https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.ps1 | iex</code>
-                                <button onclick="copyText('cmd-win', this)" class="absolute right-5 top-1/2 -translate-y-1/2 btn-ios ripple bg-white/10 hover:bg-primary text-white px-4 py-2 rounded-xl text-xs font-semibold transition-all">
+                            <div class="p-5 relative code-block">
+                                <code id="cmd-win" class="text-sm font-mono break-all block pr-20 leading-relaxed" style="color: #5AC8FA;">irm https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.ps1 | iex</code>
+                                <button onclick="copyText('cmd-win', this)" class="absolute right-5 top-1/2 -translate-y-1/2 btn-ios ripple glass-tertiary hover:bg-primary text-main px-4 py-2 rounded-xl text-xs font-semibold transition-all">
                                     <i class="fa-regular fa-copy"></i>
                                 </button>
                             </div>
@@ -474,23 +576,23 @@
 
                         <!-- macOS/Linux -->
                         <div class="glass-tertiary rounded-2xl overflow-hidden group hover:border-warning/30 hover-lift">
-                            <div class="flex items-center justify-between px-5 py-3.5 bg-white/[0.02] border-b border-white/5">
+                            <div class="flex items-center justify-between px-5 py-3.5 border-b" style="border-color: var(--glass-tertiary-border); background: rgba(128,128,128,0.03);">
                                 <div class="flex items-center gap-3">
                                     <div class="flex gap-1.5">
                                         <div class="w-8 h-8 rounded-lg bg-gray-500/10 flex items-center justify-center">
-                                            <i class="fa-brands fa-apple text-gray-300"></i>
+                                            <i class="fa-brands fa-apple text-sub"></i>
                                         </div>
                                         <div class="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                                            <i class="fa-brands fa-linux text-yellow-400"></i>
+                                            <i class="fa-brands fa-linux text-yellow-500"></i>
                                         </div>
                                     </div>
-                                    <span class="font-semibold text-sm">macOS / Linux</span>
-                                    <span class="text-xs text-gray-500">Bash</span>
+                                    <span class="font-semibold text-sm text-main">macOS / Linux</span>
+                                    <span class="text-xs text-muted">Bash</span>
                                 </div>
                             </div>
-                            <div class="p-5 relative">
-                                <code id="cmd-unix" class="text-sm text-yellow-300/90 font-mono break-all block pr-20 leading-relaxed">curl -fsSL https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.sh | bash</code>
-                                <button onclick="copyText('cmd-unix', this)" class="absolute right-5 top-1/2 -translate-y-1/2 btn-ios ripple bg-white/10 hover:bg-warning text-white px-4 py-2 rounded-xl text-xs font-semibold transition-all">
+                            <div class="p-5 relative code-block">
+                                <code id="cmd-unix" class="text-sm font-mono break-all block pr-20 leading-relaxed" style="color: #FFD60A;">curl -fsSL https://cdn.jsdelivr.net/gh/1186258278/OpenCodeChineseTranslation@main/install.sh | bash</code>
+                                <button onclick="copyText('cmd-unix', this)" class="absolute right-5 top-1/2 -translate-y-1/2 btn-ios ripple glass-tertiary hover:bg-warning text-main px-4 py-2 rounded-xl text-xs font-semibold transition-all">
                                     <i class="fa-regular fa-copy"></i>
                                 </button>
                             </div>
@@ -500,7 +602,7 @@
 
                 <!-- Offline Packages -->
                 <div id="tab-content-offline" class="hidden p-6 md:p-8">
-                    <div id="loading-assets" class="text-center py-12 text-gray-400">
+                    <div id="loading-assets" class="text-center py-12 text-muted">
                         <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-4 text-primary"></i>
                         <p class="text-sm">正在获取最新构建资源...</p>
                     </div>
@@ -511,13 +613,13 @@
             </div>
 
             <!-- Release Notes Toggle -->
-            <div class="border-t border-white/5 bg-white/[0.01]">
-                <button onclick="toggleNotes()" id="notes-toggle" class="w-full py-4 text-xs font-medium text-gray-500 hover:text-white transition-colors flex items-center justify-center gap-2 group">
+            <div class="border-t" style="border-color: var(--glass-tertiary-border); background: rgba(128,128,128,0.02);">
+                <button onclick="toggleNotes()" id="notes-toggle" class="w-full py-4 text-xs font-medium text-muted hover:text-main transition-colors flex items-center justify-center gap-2 group">
                     <span>查看更新日志</span>
                     <i class="fa-solid fa-chevron-down group-hover:translate-y-0.5 transition-transform"></i>
                 </button>
-                <div id="release-notes" class="hidden border-t border-white/5 bg-black/30">
-                    <div class="p-6 md:p-8 prose prose-invert prose-sm max-w-none text-gray-300" id="notes-content">
+                <div id="release-notes" class="hidden border-t" style="border-color: var(--glass-tertiary-border); background: rgba(0,0,0,0.05);">
+                    <div class="p-6 md:p-8 prose prose-sm max-w-none text-sub" id="notes-content">
                         <!-- Notes content -->
                     </div>
                 </div>
@@ -527,20 +629,20 @@
 
     <!-- Checksums Modal -->
     <div id="checksums-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center px-4">
-        <div class="absolute inset-0 bg-black/80 backdrop-blur-md" onclick="closeChecksums()"></div>
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-md" onclick="closeChecksums()"></div>
         <div class="relative glass-primary rounded-3xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col animate-in">
-            <div class="flex items-center justify-between p-5 border-b border-white/10">
-                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <div class="flex items-center justify-between p-5 border-b" style="border-color: var(--glass-tertiary-border);">
+                <h3 class="text-sm font-bold text-main flex items-center gap-2">
                     <i class="fa-solid fa-file-shield text-success"></i> SHA256 校验和
                 </h3>
-                <button onclick="closeChecksums()" class="text-gray-400 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg">
+                <button onclick="closeChecksums()" class="text-muted hover:text-main transition-colors p-2 hover:bg-white/10 rounded-lg">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-            <div class="p-0 overflow-auto bg-black/40">
-                <pre id="checksums-content" class="text-xs text-gray-300 font-mono p-5 whitespace-pre-wrap break-all"></pre>
+            <div class="p-0 overflow-auto code-block">
+                <pre id="checksums-content" class="text-xs font-mono p-5 whitespace-pre-wrap break-all text-sub"></pre>
             </div>
-            <div class="p-5 border-t border-white/10 flex justify-end">
+            <div class="p-5 border-t flex justify-end" style="border-color: var(--glass-tertiary-border);">
                 <button onclick="copyChecksums()" class="btn-ios ripple bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all">
                     <i class="fa-regular fa-copy mr-1.5"></i> 复制全部
                 </button>
@@ -552,11 +654,11 @@
     <section id="gallery" class="py-24 px-4 relative z-10">
         <div class="max-w-6xl mx-auto">
             <div class="text-center mb-12">
-                <h2 class="text-3xl font-bold mb-4">界面预览</h2>
+                <h2 class="text-3xl font-bold mb-4 text-main">界面预览</h2>
                 <div class="flex justify-center gap-2">
-                    <button onclick="switchTab('main')" id="btn-main" class="tab-btn active px-5 py-2 rounded-xl border border-transparent text-sm font-medium text-gray-400 hover:text-white transition-all">主界面</button>
-                    <button onclick="switchTab('dialog')" id="btn-dialog" class="tab-btn px-5 py-2 rounded-xl border border-transparent text-sm font-medium text-gray-400 hover:text-white transition-all">对话框</button>
-                    <button onclick="switchTab('mcp')" id="btn-mcp" class="tab-btn px-5 py-2 rounded-xl border border-transparent text-sm font-medium text-gray-400 hover:text-white transition-all">MCP配置</button>
+                    <button onclick="switchTab('main')" id="btn-main" class="tab-btn active px-5 py-2 rounded-xl border border-transparent text-sm font-medium transition-all">主界面</button>
+                    <button onclick="switchTab('dialog')" id="btn-dialog" class="tab-btn px-5 py-2 rounded-xl border border-transparent text-sm font-medium transition-all">对话框</button>
+                    <button onclick="switchTab('mcp')" id="btn-mcp" class="tab-btn px-5 py-2 rounded-xl border border-transparent text-sm font-medium transition-all">MCP配置</button>
                 </div>
             </div>
 
@@ -568,10 +670,10 @@
                         <div class="dot dot-green"></div>
                     </div>
                     <div class="flex-1 text-center">
-                        <div class="glass-tertiary rounded-lg px-4 py-1.5 text-xs text-gray-500 inline-block w-72">opencode://editor/preview</div>
+                        <div class="glass-tertiary rounded-lg px-4 py-1.5 text-xs text-muted inline-block w-72">opencode://editor/preview</div>
                     </div>
                 </div>
-                <div class="relative bg-[#1C1C1E] aspect-video md:aspect-[16/9] overflow-hidden group">
+                <div class="relative aspect-video md:aspect-[16/9] overflow-hidden group" style="background: var(--browser-bg);">
                     <img id="preview-img" src="01.png" alt="Preview" class="w-full h-full object-cover object-top transition-all duration-700 group-hover:scale-[1.02]" style="opacity: 1; transition: opacity 0.3s;">
                     <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>
                     <div class="absolute bottom-6 left-6 right-6 flex justify-between items-end pointer-events-none">
@@ -586,8 +688,8 @@
     <section id="features" class="py-24 relative z-10">
         <div class="max-w-6xl mx-auto px-4">
             <div class="text-center mb-16">
-                <h2 class="text-3xl font-bold mb-4">为什么选择我们</h2>
-                <p class="text-gray-400">专为中国开发者打造的 AI 编程体验</p>
+                <h2 class="text-3xl font-bold mb-4 text-main">为什么选择我们</h2>
+                <p class="text-muted">专为中国开发者打造的 AI 编程体验</p>
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -595,58 +697,58 @@
                     <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
                         <i class="fa-solid fa-sync text-primary text-2xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold mb-3">每日自动构建</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed">基于 GitHub Actions 的 CI/CD 流水线，每天定时拉取官方最新代码，零延迟体验新功能。</p>
+                    <h3 class="text-xl font-bold mb-3 text-main">每日自动构建</h3>
+                    <p class="text-muted text-sm leading-relaxed">基于 GitHub Actions 的 CI/CD 流水线，每天定时拉取官方最新代码，零延迟体验新功能。</p>
                 </div>
                 
                 <div class="glass-secondary rounded-3xl p-8 hover-lift hover-glow transition-all duration-300 gradient-border">
                     <div class="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center mb-6">
                         <i class="fa-solid fa-globe text-secondary text-2xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold mb-3">全量深度汉化</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed">覆盖菜单、设置、对话框及 TUI 界面。不仅仅是翻译，更是符合中文语境的本地化。</p>
+                    <h3 class="text-xl font-bold mb-3 text-main">全量深度汉化</h3>
+                    <p class="text-muted text-sm leading-relaxed">覆盖菜单、设置、对话框及 TUI 界面。不仅仅是翻译，更是符合中文语境的本地化。</p>
                 </div>
                 
                 <div class="glass-secondary rounded-3xl p-8 hover-lift hover-glow transition-all duration-300 gradient-border">
                     <div class="w-14 h-14 rounded-2xl bg-success/10 flex items-center justify-center mb-6">
                         <i class="fa-solid fa-rocket text-success text-2xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold mb-3">国内极速下载</h3>
-                    <p class="text-gray-400 text-sm leading-relaxed">内置 CDN 加速逻辑，智能切换 Gitee 镜像，彻底解决国内网络环境下的安装难题。</p>
+                    <h3 class="text-xl font-bold mb-3 text-main">国内极速下载</h3>
+                    <p class="text-muted text-sm leading-relaxed">内置 CDN 加速逻辑，智能切换 Gitee 镜像，彻底解决国内网络环境下的安装难题。</p>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Footer -->
-    <footer class="border-t border-white/5 py-16 relative z-10 bg-black/40">
+    <footer class="border-t py-16 relative z-10" style="border-color: var(--glass-tertiary-border); background: rgba(0,0,0,0.1);">
         <div class="max-w-7xl mx-auto px-4">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12 text-sm">
                 <div class="flex flex-col gap-3">
-                    <h4 class="text-white font-bold mb-2">资源</h4>
-                    <a href="https://github.com/1186258278/OpenCodeChineseTranslation" class="text-gray-400 hover:text-primary transition-colors">GitHub 仓库</a>
-                    <a href="https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation" class="text-gray-400 hover:text-primary transition-colors">Gitee 镜像</a>
-                    <a href="https://github.com/1186258278/OpenCodeChineseTranslation/releases" class="text-gray-400 hover:text-primary transition-colors">历史版本</a>
+                    <h4 class="text-main font-bold mb-2">资源</h4>
+                    <a href="https://github.com/1186258278/OpenCodeChineseTranslation" class="text-muted hover:text-primary transition-colors">GitHub 仓库</a>
+                    <a href="https://gitee.com/QtCodeCreators/OpenCodeChineseTranslation" class="text-muted hover:text-primary transition-colors">Gitee 镜像</a>
+                    <a href="https://github.com/1186258278/OpenCodeChineseTranslation/releases" class="text-muted hover:text-primary transition-colors">历史版本</a>
                 </div>
                 <div class="flex flex-col gap-3">
-                    <h4 class="text-white font-bold mb-2">支持</h4>
-                    <a href="https://github.com/1186258278/OpenCodeChineseTranslation/issues" class="text-gray-400 hover:text-primary transition-colors">问题反馈</a>
-                    <a href="#" class="text-gray-400 hover:text-primary transition-colors">使用文档</a>
+                    <h4 class="text-main font-bold mb-2">支持</h4>
+                    <a href="https://github.com/1186258278/OpenCodeChineseTranslation/issues" class="text-muted hover:text-primary transition-colors">问题反馈</a>
+                    <a href="#" class="text-muted hover:text-primary transition-colors">使用文档</a>
                 </div>
                 <div class="flex flex-col gap-3">
-                    <h4 class="text-white font-bold mb-2">友情链接</h4>
-                    <a href="https://opencode.ai/" target="_blank" class="text-gray-400 hover:text-primary transition-colors">OpenCode 官网</a>
+                    <h4 class="text-main font-bold mb-2">友情链接</h4>
+                    <a href="https://opencode.ai/" target="_blank" class="text-muted hover:text-primary transition-colors">OpenCode 官网</a>
                     <a href="https://qingchencloud.com/" target="_blank" class="text-primary hover:text-blue-400 transition-colors">晴辰云</a>
                 </div>
                 <div class="flex flex-col gap-3">
-                    <h4 class="text-white font-bold mb-2">关于</h4>
-                    <span class="text-xs text-gray-600">本项目与 Anomaly Company 无附属关系。</span>
-                    <span class="text-xs text-gray-600">遵循 MIT 开源协议。</span>
+                    <h4 class="text-main font-bold mb-2">关于</h4>
+                    <span class="text-xs text-muted">本项目与 Anomaly Company 无附属关系。</span>
+                    <span class="text-xs text-muted">遵循 MIT 开源协议。</span>
                 </div>
             </div>
             
-            <div class="border-t border-white/5 pt-8 text-center">
-                <p class="text-gray-600 text-xs">
+            <div class="border-t pt-8 text-center" style="border-color: var(--glass-tertiary-border);">
+                <p class="text-muted text-xs">
                     &copy; 2026 OpenCode Chinese Translation Team. 干净如水晶 · 轻盈如羽毛 · 精致如苹果 · 流畅如丝绸
                 </p>
             </div>
@@ -654,7 +756,27 @@
     </footer>
 
     <script>
-        // Image Gallery Logic
+        // ========== 主题切换系统 ==========
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            
+            // 添加切换动画
+            document.body.style.transition = 'background 0.4s ease, color 0.3s ease';
+        }
+        
+        // 监听系统主题变化
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (!localStorage.getItem('theme')) {
+                document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+            }
+        });
+
+        // ========== Image Gallery Logic ==========
         const imageData = {
             'main': { src: '01.png', desc: '全功能管理工具 (CLI) · 一键部署' },
             'dialog': { src: '02.png', desc: '沉浸式汉化体验 · 主编辑器' },
@@ -676,7 +798,6 @@
             }, 200);
         }
 
-        // Download Animation
         function startDownload(btn) {
             if (btn.classList.contains('downloading')) return;
             
@@ -690,7 +811,7 @@
             }, 3000);
         }
 
-        // --- Dashboard Logic ---
+        // ========== Dashboard Logic ==========
         let currentSource = 'github';
         let currentChannel = 'stable';
         const repo = '1186258278/OpenCodeChineseTranslation';
@@ -731,14 +852,14 @@
             
             if (channel === 'stable') {
                 btnStable.className = 'px-4 py-2 rounded-lg bg-success/20 text-success border border-success/30 transition-all shadow-sm';
-                btnNightly.className = 'px-4 py-2 rounded-lg text-gray-400 hover:text-warning transition-all border border-transparent';
+                btnNightly.className = 'px-4 py-2 rounded-lg text-muted hover:text-warning transition-all border border-transparent';
                 badgeContainer.innerHTML = `
                     <div class="bg-success/10 text-success px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border border-success/20 flex items-center gap-2 shadow-lg shadow-success/10">
                         <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
                         STABLE
                     </div>`;
             } else {
-                btnStable.className = 'px-4 py-2 rounded-lg text-gray-400 hover:text-success transition-all border border-transparent';
+                btnStable.className = 'px-4 py-2 rounded-lg text-muted hover:text-success transition-all border border-transparent';
                 btnNightly.className = 'px-4 py-2 rounded-lg bg-warning/20 text-warning border border-warning/30 transition-all shadow-sm';
                 badgeContainer.innerHTML = `
                     <div class="bg-warning/10 text-warning px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border border-warning/20 flex items-center gap-2 shadow-lg shadow-warning/10">
@@ -785,11 +906,11 @@
             const btnOffline = document.getElementById('tab-btn-offline');
 
             [btnScript, btnOffline].forEach(btn => {
-                btn.className = 'flex-1 py-4 text-sm font-medium text-gray-400 border-b-2 border-transparent hover:text-white hover:bg-white/5 transition-all';
+                btn.className = 'flex-1 py-4 text-sm font-medium text-muted border-b-2 border-transparent hover:text-main hover:bg-white/5 transition-all';
             });
 
             const activeBtn = tab === 'script' ? btnScript : btnOffline;
-            activeBtn.className = 'flex-1 py-4 text-sm font-semibold text-white border-b-2 border-primary bg-primary/5 transition-all';
+            activeBtn.className = 'flex-1 py-4 text-sm font-semibold text-main border-b-2 border-primary bg-primary/5 transition-all';
 
             if (tab === 'offline' && !document.getElementById('assets-grid').innerHTML.trim()) {
                 renderAssets();
@@ -801,11 +922,11 @@
             
             document.getElementById('src-btn-github').className = source === 'github' 
                 ? 'px-5 py-2 rounded-lg bg-primary text-white shadow-lg shadow-primary/20 transition-all' 
-                : 'px-5 py-2 rounded-lg text-gray-400 hover:text-white transition-all';
+                : 'px-5 py-2 rounded-lg text-muted hover:text-main transition-all';
             
             document.getElementById('src-btn-gitee').className = source === 'gitee' 
                 ? 'px-5 py-2 rounded-lg bg-danger text-white shadow-lg shadow-danger/20 transition-all' 
-                : 'px-5 py-2 rounded-lg text-gray-400 hover:text-white transition-all';
+                : 'px-5 py-2 rounded-lg text-muted hover:text-main transition-all';
 
             const templates = getSafeCmds(currentChannel);
             document.getElementById('cmd-win').textContent = templates[source].win;
@@ -818,12 +939,10 @@
                 const icon = btn.querySelector('i');
                 icon.className = 'fa-solid fa-check';
                 btn.classList.add('bg-success', 'border-success/30');
-                btn.classList.remove('bg-white/10');
                 
                 setTimeout(() => {
                     icon.className = 'fa-regular fa-copy';
                     btn.classList.remove('bg-success', 'border-success/30');
-                    btn.classList.add('bg-white/10');
                 }, 2000);
             });
         }
@@ -846,12 +965,12 @@
                 <div class="glass-tertiary rounded-2xl p-5 hover-lift hover-glow transition-all duration-300 group gradient-border">
                     <div class="flex items-start justify-between mb-5">
                         <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
+                            <div class="w-12 h-12 rounded-xl glass-tertiary flex items-center justify-center">
                                 <i class="fa-brands ${platform.icon} ${platform.color} text-2xl"></i>
                             </div>
                             <div>
-                                <h4 class="font-bold text-sm text-gray-100">${platform.name}</h4>
-                                <p class="text-xs text-gray-500">${size} MB</p>
+                                <h4 class="font-bold text-sm text-main">${platform.name}</h4>
+                                <p class="text-xs text-muted">${size} MB</p>
                             </div>
                         </div>
                     </div>
@@ -879,13 +998,13 @@
             const platforms = [
                 { id: 'windows-x64', matchId: 'windows-amd64', icon: 'fa-windows', name: 'Windows x64', color: 'text-blue-400' },
                 { id: 'windows-arm64', matchId: 'windows-arm64', icon: 'fa-windows', name: 'Windows ARM64', color: 'text-purple-400' },
-                { id: 'darwin-amd64', matchId: 'darwin-amd64', icon: 'fa-apple', name: 'macOS (Intel)', color: 'text-gray-300' },
-                { id: 'darwin-arm64', matchId: 'darwin-arm64', icon: 'fa-apple', name: 'macOS (Apple Silicon)', color: 'text-white' },
-                { id: 'linux-x64', matchId: 'linux-amd64', icon: 'fa-linux', name: 'Linux x64', color: 'text-yellow-400' },
+                { id: 'darwin-amd64', matchId: 'darwin-amd64', icon: 'fa-apple', name: 'macOS (Intel)', color: 'text-sub' },
+                { id: 'darwin-arm64', matchId: 'darwin-arm64', icon: 'fa-apple', name: 'macOS (Apple Silicon)', color: 'text-main' },
+                { id: 'linux-x64', matchId: 'linux-amd64', icon: 'fa-linux', name: 'Linux x64', color: 'text-yellow-500' },
                 { id: 'linux-arm64', matchId: 'linux-arm64', icon: 'fa-linux', name: 'Linux ARM64', color: 'text-orange-400' }
             ];
 
-            grid.innerHTML += `<div class="md:col-span-3 text-sm font-bold text-gray-300 mb-2 mt-2">汉化版 OpenCode (完整包)</div>`;
+            grid.innerHTML += `<div class="md:col-span-3 text-sm font-bold text-main mb-2 mt-2">汉化版 OpenCode (完整包)</div>`;
             
             platforms.forEach(p => {
                 const asset = releaseData.assets.find(a => a.name.includes(p.id) && a.name.endsWith('.zip'));
@@ -895,13 +1014,13 @@
                 }
             });
 
-            grid.innerHTML += `<div class="md:col-span-3 text-sm font-bold text-gray-300 mb-2 mt-6">管理工具 (CLI)</div>`;
+            grid.innerHTML += `<div class="md:col-span-3 text-sm font-bold text-main mb-2 mt-6">管理工具 (CLI)</div>`;
             
             platforms.forEach(p => {
                 const asset = releaseData.assets.find(a => a.name.includes('opencode-cli-') && a.name.includes(p.matchId));
                 if (asset) {
                     const sizeMB = (asset.size / 1024 / 1024).toFixed(1);
-                    grid.innerHTML += createAssetCard(p, asset, sizeMB, '下载工具', 'bg-white/10 hover:bg-white/20');
+                    grid.innerHTML += createAssetCard(p, asset, sizeMB, '下载工具', 'glass-tertiary hover:bg-white/10');
                 }
             });
             
@@ -909,7 +1028,7 @@
             if (checksums) {
                  grid.innerHTML += `
                     <div class="md:col-span-3 flex justify-center mt-4">
-                        <button onclick="showChecksums('${checksums.browser_download_url}')" class="text-xs text-gray-500 hover:text-white flex items-center gap-2 transition-colors group glass-tertiary px-4 py-2 rounded-xl">
+                        <button onclick="showChecksums('${checksums.browser_download_url}')" class="text-xs text-muted hover:text-main flex items-center gap-2 transition-colors group glass-tertiary px-4 py-2 rounded-xl">
                             <i class="fa-solid fa-file-shield group-hover:text-success transition-colors"></i> 查看 SHA256 校验和
                         </button>
                     </div>
