@@ -415,6 +415,41 @@
             outline-offset: 2px;
         }
         
+        /* ========== View Transitions (现代浏览器) ========== */
+        ::view-transition-old(root),
+        ::view-transition-new(root) {
+            animation: none;
+            mix-blend-mode: normal;
+        }
+        
+        ::view-transition-old(root) {
+            z-index: 1;
+        }
+        
+        ::view-transition-new(root) {
+            z-index: 9999;
+            animation: reveal-theme 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes reveal-theme {
+            from {
+                clip-path: circle(0% at var(--click-x, 95%) var(--click-y, 5%));
+            }
+            to {
+                clip-path: circle(150% at var(--click-x, 95%) var(--click-y, 5%));
+            }
+        }
+        
+        [data-theme="dark"]::view-transition-old(root) {
+            z-index: 9999;
+            animation: reveal-theme 0.7s cubic-bezier(0.4, 0, 0.2, 1) reverse;
+        }
+        
+        [data-theme="dark"]::view-transition-new(root) {
+            z-index: 1;
+            animation: none;
+        }
+        
         /* ========== 文本颜色类 ========== */
         .text-main { color: var(--text-primary); }
         .text-sub { color: var(--text-secondary); }
@@ -777,16 +812,62 @@
 
     <script>
         // ========== 主题切换系统 ==========
-        function toggleTheme() {
+        function toggleTheme(event) {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
             const next = current === 'dark' ? 'light' : 'dark';
             
-            html.setAttribute('data-theme', next);
-            localStorage.setItem('theme', next);
+            // 获取点击位置
+            const x = event ? event.clientX : window.innerWidth - 50;
+            const y = event ? event.clientY : 50;
             
-            // 添加切换动画
-            document.body.style.transition = 'background 0.4s ease, color 0.3s ease';
+            // 计算需要覆盖整个屏幕的最大半径
+            const maxRadius = Math.hypot(
+                Math.max(x, window.innerWidth - x),
+                Math.max(y, window.innerHeight - y)
+            ) * 1.5;
+            
+            // 检查是否支持 View Transitions API（现代浏览器）
+            if (document.startViewTransition) {
+                // 设置点击位置 CSS 变量
+                html.style.setProperty('--click-x', `${x}px`);
+                html.style.setProperty('--click-y', `${y}px`);
+                
+                document.startViewTransition(() => {
+                    html.setAttribute('data-theme', next);
+                    localStorage.setItem('theme', next);
+                });
+                return;
+            }
+            
+            // 降级方案：clip-path 圆形扩散动画
+            const overlay = document.createElement('div');
+            overlay.className = 'theme-transition-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                z-index: 99999;
+                pointer-events: none;
+                background: ${next === 'dark' 
+                    ? 'linear-gradient(180deg, #000000 0%, #1C1C1E 100%)' 
+                    : 'linear-gradient(180deg, #F2F2F7 0%, #E5E5EA 100%)'};
+                clip-path: circle(0px at ${x}px ${y}px);
+                transition: clip-path 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            `;
+            
+            document.body.appendChild(overlay);
+            
+            // 触发重绘后开始动画
+            requestAnimationFrame(() => {
+                overlay.style.clipPath = `circle(${maxRadius}px at ${x}px ${y}px)`;
+            });
+            
+            // 动画完成后切换主题并移除遮罩
+            setTimeout(() => {
+                html.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                overlay.remove();
+            }, 600);
         }
         
         // 监听系统主题变化
