@@ -415,39 +415,30 @@
             outline-offset: 2px;
         }
         
-        /* ========== View Transitions (现代浏览器) ========== */
+        /* ========== View Transitions 主题切换动画 ========== */
         ::view-transition-old(root),
         ::view-transition-new(root) {
             animation: none;
             mix-blend-mode: normal;
         }
         
-        ::view-transition-old(root) {
-            z-index: 1;
-        }
-        
+        /* 新主题层在上面，用 mask 控制显示区域 */
         ::view-transition-new(root) {
-            z-index: 9999;
-            animation: reveal-theme 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1;
+            animation: circleReveal 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
         
-        @keyframes reveal-theme {
+        ::view-transition-old(root) {
+            z-index: 0;
+        }
+        
+        @keyframes circleReveal {
             from {
-                clip-path: circle(0% at var(--click-x, 95%) var(--click-y, 5%));
+                clip-path: circle(0% at var(--reveal-x, 0%) var(--reveal-y, 100%));
             }
             to {
-                clip-path: circle(150% at var(--click-x, 95%) var(--click-y, 5%));
+                clip-path: circle(150% at var(--reveal-x, 0%) var(--reveal-y, 100%));
             }
-        }
-        
-        [data-theme="dark"]::view-transition-old(root) {
-            z-index: 9999;
-            animation: reveal-theme 0.7s cubic-bezier(0.4, 0, 0.2, 1) reverse;
-        }
-        
-        [data-theme="dark"]::view-transition-new(root) {
-            z-index: 1;
-            animation: none;
         }
         
         /* ========== 文本颜色类 ========== */
@@ -812,71 +803,30 @@
 
     <script>
         // ========== 主题切换系统 ==========
-        function toggleTheme(event) {
+        function toggleTheme() {
             const html = document.documentElement;
             const current = html.getAttribute('data-theme');
             const next = current === 'dark' ? 'light' : 'dark';
             
-            // 获取点击位置
-            const x = event ? event.clientX : window.innerWidth - 50;
-            const y = event ? event.clientY : 50;
+            // 设置扩散起点
+            // 白切黑：从左下角 (0%, 100%)
+            // 黑切白：从右上角 (100%, 0%)
+            const toDark = next === 'dark';
+            html.style.setProperty('--reveal-x', toDark ? '0%' : '100%');
+            html.style.setProperty('--reveal-y', toDark ? '100%' : '0%');
             
-            // 计算需要覆盖整个屏幕的最大半径
-            const maxRadius = Math.hypot(
-                Math.max(x, window.innerWidth - x),
-                Math.max(y, window.innerHeight - y)
-            ) * 1.5;
-            
-            // 检查是否支持 View Transitions API（现代浏览器）
-            if (document.startViewTransition) {
-                // 设置点击位置 CSS 变量
-                html.style.setProperty('--click-x', `${x}px`);
-                html.style.setProperty('--click-y', `${y}px`);
-                
-                document.startViewTransition(() => {
-                    html.setAttribute('data-theme', next);
-                    localStorage.setItem('theme', next);
-                });
-                return;
-            }
-            
-            // 降级方案：clip-path 圆形扩散动画
-            const overlay = document.createElement('div');
-            overlay.style.cssText = `
-                position: fixed;
-                inset: 0;
-                z-index: 99999;
-                pointer-events: none;
-                background: ${next === 'dark' ? '#000000' : '#F2F2F7'};
-                clip-path: circle(0px at ${x}px ${y}px);
-                transition: clip-path 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            `;
-            
-            document.body.appendChild(overlay);
-            
-            // 触发扩散动画
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    overlay.style.clipPath = `circle(${maxRadius}px at ${x}px ${y}px)`;
-                });
-            });
-            
-            // 扩散完成后切换主题
-            setTimeout(() => {
+            const switchTheme = () => {
                 html.setAttribute('data-theme', next);
                 localStorage.setItem('theme', next);
-            }, 480);
+            };
             
-            // 给页面足够时间渲染新主题，然后淡出遮罩
-            setTimeout(() => {
-                overlay.style.transition = 'opacity 0.3s ease-out';
-                overlay.style.opacity = '0';
-            }, 600);
-            
-            // 淡出完成后移除
-            setTimeout(() => {
-                overlay.remove();
-            }, 900);
+            // 使用 View Transitions API（如果支持）
+            if (document.startViewTransition) {
+                document.startViewTransition(switchTheme);
+            } else {
+                // 降级：直接切换，无动画
+                switchTheme();
+            }
         }
         
         // 监听系统主题变化
