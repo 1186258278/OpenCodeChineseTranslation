@@ -225,15 +225,16 @@
             transform: scale(0.97);
         }
         
-        /* 次级按钮 - 自适应主题 */
-        .btn-secondary {
-            background: var(--btn-secondary-bg);
-            color: var(--btn-secondary-text);
-            border: 1px solid var(--btn-secondary-border);
+        /* 次级按钮 - 幽灵风格 */
+        .btn-outline {
+            background: transparent;
+            color: #007AFF;
+            border: 1.5px solid #007AFF;
             transition: all 0.2s ease;
         }
-        .btn-secondary:hover {
-            background: var(--btn-secondary-hover);
+        .btn-outline:hover {
+            background: rgba(0, 122, 255, 0.1);
+            border-color: #0066DD;
         }
         
         .ripple {
@@ -1039,7 +1040,7 @@
                 const asset = releaseData.assets.find(a => a.name.includes('opencode-cli-') && a.name.includes(p.matchId));
                 if (asset) {
                     const sizeMB = (asset.size / 1024 / 1024).toFixed(1);
-                    grid.innerHTML += createAssetCard(p, asset, sizeMB, '下载工具', 'btn-secondary');
+                    grid.innerHTML += createAssetCard(p, asset, sizeMB, '下载工具', 'btn-outline');
                 }
             });
             
