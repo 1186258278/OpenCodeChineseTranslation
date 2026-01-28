@@ -847,34 +847,36 @@
                 inset: 0;
                 z-index: 99999;
                 pointer-events: none;
-                background: ${next === 'dark' 
-                    ? '#000000' 
-                    : '#F2F2F7'};
+                background: ${next === 'dark' ? '#000000' : '#F2F2F7'};
                 clip-path: circle(0px at ${x}px ${y}px);
                 transition: clip-path 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             `;
             
             document.body.appendChild(overlay);
             
-            // 触发动画
+            // 触发扩散动画
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     overlay.style.clipPath = `circle(${maxRadius}px at ${x}px ${y}px)`;
                 });
             });
             
-            // 动画完成后：先切换主题，等一帧渲染，再移除遮罩
+            // 扩散完成后切换主题
             setTimeout(() => {
                 html.setAttribute('data-theme', next);
                 localStorage.setItem('theme', next);
-                
-                // 等待浏览器完成重绘
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        overlay.remove();
-                    });
-                });
-            }, 500);
+            }, 480);
+            
+            // 给页面足够时间渲染新主题，然后淡出遮罩
+            setTimeout(() => {
+                overlay.style.transition = 'opacity 0.3s ease-out';
+                overlay.style.opacity = '0';
+            }, 600);
+            
+            // 淡出完成后移除
+            setTimeout(() => {
+                overlay.remove();
+            }, 900);
         }
         
         // 监听系统主题变化
