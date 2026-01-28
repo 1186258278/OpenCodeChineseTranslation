@@ -862,11 +862,17 @@
                 overlay.style.clipPath = `circle(${maxRadius}px at ${x}px ${y}px)`;
             });
             
-            // 动画完成后切换主题并移除遮罩
+            // 动画进行到一半时切换主题（在 overlay 下面）
             setTimeout(() => {
                 html.setAttribute('data-theme', next);
                 localStorage.setItem('theme', next);
-                overlay.remove();
+            }, 300);
+            
+            // 动画完成后淡出并移除遮罩
+            setTimeout(() => {
+                overlay.style.transition = 'opacity 0.2s ease';
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.remove(), 200);
             }, 600);
         }
         
