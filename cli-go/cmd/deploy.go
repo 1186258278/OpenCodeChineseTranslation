@@ -380,7 +380,18 @@ func copyFileDeploy(src, dst string) error {
 	defer destFile.Close()
 
 	_, err = io.Copy(destFile, sourceFile)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// 设置可执行权限 (Linux/macOS)
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(dst, 0755); err != nil {
+			return fmt.Errorf("设置执行权限失败: %v", err)
+		}
+	}
+
+	return nil
 }
 
 // containsPath 检查 PATH 是否包含指定目录

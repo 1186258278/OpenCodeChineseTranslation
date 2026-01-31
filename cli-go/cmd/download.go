@@ -366,6 +366,15 @@ func unzip(src, dest string) error {
 		if err != nil {
 			return err
 		}
+
+		// 确保二进制文件有执行权限 (Unix)
+		// ZIP 可能在 Windows 上创建，权限信息可能丢失
+		if runtime.GOOS != "windows" {
+			name := strings.ToLower(f.Name)
+			if strings.Contains(name, "opencode") && !strings.HasSuffix(name, ".json") && !strings.HasSuffix(name, ".txt") {
+				os.Chmod(fpath, 0755)
+			}
+		}
 	}
 
 	return nil
