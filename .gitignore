@@ -84,6 +84,12 @@ releases/
 
 .claude/
 
+# ====================
+# Context Memory (AI 跨会话记忆)
+# ====================
+.context.md
+CONTEXT.local.md
+
 openspec/
 
 .worktrees/
