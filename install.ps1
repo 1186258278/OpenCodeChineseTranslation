@@ -22,7 +22,7 @@ function Write-Color($text, $color) {
 }
 
 Write-Color "==============================================" "Cyan"
-Write-Color "   OpenCode 汉化管理工具安装脚本 (v8.6.0)   " "Cyan"
+Write-Color "   OpenCode 汉化管理工具安装脚本 (v8.6.1)   " "Cyan"
 Write-Color "==============================================" "Cyan"
 
 # 1. 系统兼容性检测
@@ -75,7 +75,7 @@ if (Test-Path $localFile) {
     # 4. 在线下载
     Write-Color "`n[2/4] 获取版本信息..." "Yellow"
     $repo = "1186258278/OpenCodeChineseTranslation"
-    $tagName = "v8.6.0" # 默认版本作为后备
+    $tagName = "v8.6.1" # 默认版本作为后备
 
     if ($Version) {
         $tagName = $Version
