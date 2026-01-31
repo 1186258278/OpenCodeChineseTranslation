@@ -16,14 +16,27 @@ import (
 var envInstallCmd = &cobra.Command{
 	Use:   "env-install",
 	Short: "一键安装编译环境 (Git/Node.js/Bun)",
-	Long:  "One-click installation of the required build environment for OpenCode",
+	Long: `一键安装 OpenCode 编译所需的环境依赖。
+
+支持非交互模式（CI/自动化场景）:
+  opencode-cli env-install --all          # 安装所有缺失环境
+  opencode-cli env-install --npm-version=latest  # 安装指定 npm 版本
+  opencode-cli env-install -y             # 自动确认，跳过交互`,
 	Run: func(cmd *cobra.Command, args []string) {
-		runEnvInstall()
+		yes, _ := cmd.Flags().GetBool("yes")
+		all, _ := cmd.Flags().GetBool("all")
+		npmVersion, _ := cmd.Flags().GetString("npm-version")
+		runEnvInstall(yes, all, npmVersion)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(envInstallCmd)
+	
+	// 非交互模式 flags
+	envInstallCmd.Flags().BoolP("yes", "y", false, "自动确认，跳过交互提示")
+	envInstallCmd.Flags().BoolP("all", "a", false, "一键安装全部缺失环境")
+	envInstallCmd.Flags().String("npm-version", "", "指定 npm 版本 (如: latest, 10, 9, 10.2.0)")
 }
 
 // EnvStatus 环境状态
@@ -35,7 +48,8 @@ type EnvStatus struct {
 }
 
 // runEnvInstall 运行环境安装
-func runEnvInstall() {
+// yes: 自动确认  all: 安装全部  npmVersion: 指定 npm 版本
+func runEnvInstall(yes bool, all bool, npmVersion string) {
 	fmt.Println("")
 	fmt.Println("══════════════════════════════════════════════════")
 	fmt.Println("  OpenCode 编译环境一键安装")
@@ -64,6 +78,39 @@ func runEnvInstall() {
 	}
 	fmt.Println("")
 
+	// ========== 非交互模式处理 ==========
+	
+	// 优先处理 --npm-version
+	if npmVersion != "" {
+		fmt.Printf("▶ 非交互模式: 安装 npm@%s\n", npmVersion)
+		installNpmVersionDirect(npmVersion)
+		return
+	}
+	
+	// 处理 --all
+	if all {
+		if allInstalled {
+			fmt.Println("✓ 所有编译环境已就绪！无需安装。")
+			return
+		}
+		fmt.Println("▶ 非交互模式: 安装全部缺失环境")
+		installAllMissing(envList)
+		return
+	}
+	
+	// 处理 --yes (自动选择推荐选项)
+	if yes {
+		if allInstalled {
+			fmt.Println("✓ 所有编译环境已就绪！")
+			return
+		}
+		fmt.Println("▶ 自动确认模式: 安装全部缺失环境")
+		installAllMissing(envList)
+		return
+	}
+
+	// ========== 交互模式 ==========
+	
 	if allInstalled {
 		fmt.Println("✓ 所有编译环境已就绪！")
 		fmt.Println("  您可以直接运行 'opencode-cli build' 进行编译。")
@@ -96,7 +143,7 @@ func runEnvInstall() {
 	case "4":
 		installBun()
 	case "5":
-		installNpmVersion()
+		installNpmVersionInteractive()
 	case "0":
 		return
 	default:
@@ -374,8 +421,28 @@ func installBun() {
 	}
 }
 
-// installNpmVersion 安装/更新 npm 到指定版本
-func installNpmVersion() {
+// installNpmVersionDirect 直接安装指定版本的 npm（非交互模式）
+func installNpmVersionDirect(version string) {
+	// 检查 node/npm 是否存在
+	if !checkCommandExists("npm") {
+		fmt.Println("  ✗ npm 未安装。请先安装 Node.js。")
+		return
+	}
+
+	currentVersion := getCommandVersion("npm", "--version")
+	fmt.Printf("  当前 npm 版本: %s\n", currentVersion)
+	fmt.Printf("  目标版本: npm@%s\n", version)
+	fmt.Println("")
+
+	fmt.Printf("正在安装 npm@%s...\n", version)
+	runInstallCommand("npm", "install", "-g", "npm@"+version)
+
+	newVersion := getCommandVersion("npm", "--version")
+	fmt.Printf("\n✓ npm 已更新: %s -> %s\n", currentVersion, newVersion)
+}
+
+// installNpmVersionInteractive 交互式安装 npm 版本
+func installNpmVersionInteractive() {
 	fmt.Println("▶ npm 版本管理")
 	fmt.Println("")
 

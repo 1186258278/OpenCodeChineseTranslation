@@ -186,7 +186,7 @@ func executeAction(action string) {
 		diagnoseCmd.Run(diagnoseCmd, []string{})
 
 	case "env-install":
-		runEnvInstall()
+		runEnvInstall(false, false, "")
 
 	case "fix-bun":
 		runFixBun()

@@ -84,13 +84,13 @@ releases/
 
 .claude/
 
+openspec/
+
 # ====================
-# Context Memory (AI 跨会话记忆)
+# AI 上下文记忆文档（跨会话持久化，不提交）
 # ====================
 .context.md
 CONTEXT.local.md
-
-openspec/
 
 .worktrees/
 

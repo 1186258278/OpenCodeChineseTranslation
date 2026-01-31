@@ -28,6 +28,28 @@
 *   🚀 **一键安装**：Go 语言编写的管理工具，无需任何运行时依赖
 *   🔧 **完整汉化**：覆盖 TUI、对话框及核心交互流程
 
+### 📊 汉化统计
+
+| 指标 | 数量 | 说明 |
+|------|------|------|
+| 📁 翻译文件 | **41** 个 | 模块化 JSON 配置 |
+| 📝 翻译规则 | **397** 条 | 精准字符串替换 |
+| 🎯 覆盖模块 | **5** 个 | dialogs/routes/components/common/root |
+| ✅ 测试覆盖 | **100%** | 18 个单元测试用例 |
+
+<details>
+<summary>📂 模块分布详情</summary>
+
+| 分类 | 文件数 | 说明 |
+|------|--------|------|
+| **dialogs** | 21 | 对话框 (Agent/Model/MCP/Session 等) |
+| **routes** | 6 | 路由页面 (Home/Session/Sidebar 等) |
+| **components** | 6 | 组件 (Prompt/Question/Sidebar 等) |
+| **common** | 6 | 通用 (Toast/Error/Messages 等) |
+| **root** | 1 | 应用入口 |
+
+</details>
+
 ---
 
 ## 界面预览
