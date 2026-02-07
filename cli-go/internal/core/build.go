@@ -207,7 +207,31 @@ func (b *Builder) Build(platform string, silent bool) error {
 		return err
 	}
 
-	args := []string{"run", "script/build.ts"}
+	// 构建脚本路径：packages/opencode/script/build.ts
+	buildScript := filepath.Join(b.buildDir, "script", "build.ts")
+
+	// 关键：必须从 monorepo 根目录执行构建脚本（与上游 CI 一致）
+	// 上游 CI 从根目录运行: ./packages/opencode/script/build.ts
+	// 这确保 Bun workspace 的 node_modules 解析正确
+	// 如果从 packages/opencode 运行，workspace hoist 会导致依赖找不到
+	repoRoot := filepath.Dir(filepath.Dir(b.buildDir))
+	rootPkgJSON := filepath.Join(repoRoot, "package.json")
+
+	var execDir string
+	var args []string
+
+	if Exists(rootPkgJSON) {
+		// monorepo 模式：从根目录执行构建脚本
+		execDir = repoRoot
+		args = []string{buildScript}
+		if !silent {
+			fmt.Println("检测到 monorepo，将从根目录执行构建脚本")
+		}
+	} else {
+		// 独立包模式：从 packages/opencode 执行
+		execDir = b.buildDir
+		args = []string{"run", "script/build.ts"}
+	}
 
 	if platform != "" {
 		// 简单的平台匹配逻辑
@@ -233,10 +257,10 @@ func (b *Builder) Build(platform string, silent bool) error {
 	}
 
 	if !silent {
-		fmt.Printf("执行: %s %s\n", b.bunPath, strings.Join(args, " "))
+		fmt.Printf("执行: %s %s (工作目录: %s)\n", b.bunPath, strings.Join(args, " "), execDir)
 	}
 
-	if err := os.Chdir(b.buildDir); err != nil {
+	if err := os.Chdir(execDir); err != nil {
 		return err
 	}
 
