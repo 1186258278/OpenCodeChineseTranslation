@@ -13,7 +13,8 @@
     "title: \"Variant cycle\"": "title: \"变体循环\"",
     "title: \"Agent cycle\"": "title: \"智能体循环\"",
     "title: \"Agent cycle reverse\"": "title: \"智能体反向循环\"",
-    "console.error(`Failed to copy console selection to clipboard: ${error}`)": "console.error(`复制控制台选择到剪贴板失败: ${error}`)"
+    "console.error(`Failed to copy console selection to clipboard: ${error}`)": "console.error(`复制控制台选择到剪贴板失败: ${error}`)",
+    "message: \"Failed to fork session\"": "message: \"分支会话失败\""
   },
   "note": "OpenCode updated to v${evt.properties.version} 在源代码中不存在，已移除"
 }

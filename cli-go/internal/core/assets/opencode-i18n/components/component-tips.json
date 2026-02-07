@@ -53,7 +53,7 @@
     "Set {highlight}\"formatter\": false{/highlight} in config to disable all auto-formatting": "在配置中设置 {highlight}\"formatter\": false{/highlight} 禁用所有自动格式化",
     "Define custom formatter commands with file extensions in config": "在配置中使用文件扩展名定义自定义格式化命令",
     "OpenCode uses LSP servers for intelligent code analysis": "OpenCode 使用 LSP 服务器进行智能代码分析",
-    "Create {highlight}.ts{/highlight} files in {highlight}.opencode/tool/{/highlight} to define new LLM tools": "在 {highlight}.opencode/tool/{/highlight} 中创建 {highlight}.ts{/highlight} 文件定义新的 LLM 工具",
+    "Create {highlight}.ts{/highlight} files in {highlight}.opencode/tools/{/highlight} to define new LLM tools": "在 {highlight}.opencode/tools/{/highlight} 中创建 {highlight}.ts{/highlight} 文件定义新的 LLM 工具",
     "Tool definitions can invoke scripts written in Python, Go, etc": "工具定义可以调用 Python、Go 等编写的脚本",
     "Add {highlight}.ts{/highlight} files to {highlight}.opencode/plugin/{/highlight} for event hooks": "将 {highlight}.ts{/highlight} 文件添加到 {highlight}.opencode/plugin/{/highlight} 创建事件钩子",
     "Use plugins to send OS notifications when sessions complete": "使用插件在会话完成时发送系统通知",

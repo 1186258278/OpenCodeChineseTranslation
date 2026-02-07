@@ -1,15 +1,16 @@
 {
     "name": "opencode-zh-CN",
-    "version": "6.1",
+    "version": "6.2",
     "description": "OpenCode 中文汉化配置文件（模块化结构）",
-    "lastUpdate": "2026-01-31",
+    "lastUpdate": "2026-02-08",
     "testPassRate": "100%",
     "upstream": {
         "repo": "anomalyco/opencode",
         "url": "https://github.com/anomalyco/opencode",
-        "branch": "dev"
+        "branch": "dev",
+        "version": "1.1.53"
     },
-    "supportedCommit": "99a1e73fa1bd5c92c02abd8a20b0e274d5b0d214",
+    "supportedCommit": "8ad5262a87e00ba9ee8ca9bde0b04d40024b37d4",
     "maintainer": {
         "name": "CodeCreator",
         "wechat": "CodeCreator",
@@ -31,6 +32,7 @@
                                     "dialogs/dialog-rename.json",
                                     "dialogs/dialog-select.json",
                                     "dialogs/dialog-session.json",
+                                    "dialogs/dialog-skill.json",
                                     "dialogs/dialog-stash.json",
                                     "dialogs/dialog-status.json",
                                     "dialogs/dialog-subagent.json",
@@ -53,6 +55,7 @@
                                        "components/component-prompt.json",
                                        "components/component-question.json",
                                        "components/component-sidebar.json",
+                                       "components/component-tips.json",
                                        "components/inline-tools.json"
                                    ],
                     "common":  [

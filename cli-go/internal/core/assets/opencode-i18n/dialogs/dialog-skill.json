@@ -1,0 +1,9 @@
+{
+  "file": "src/cli/cmd/tui/component/dialog-skill.tsx",
+  "description": "Skills 选择对话框",
+  "replacements": {
+    "title: \"Skills\"": "title: \"技能\"",
+    "placeholder: \"Search skills...\"": "placeholder: \"搜索技能...\"",
+    "category: \"Skills\"": "category: \"技能\""
+  }
+}

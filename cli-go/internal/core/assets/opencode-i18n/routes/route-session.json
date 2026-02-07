@@ -58,6 +58,9 @@
     "title: \"Line down\"": "title: \"向下滚动\"",
     "message: \"Failed to copy share URL to clipboard\"": "message: \"复制链接到剪贴板失败\"",
     "{revert()!.reverted.length} message reverted": "{revert()!.reverted.length} 条消息已撤销",
-    "Fetching from the web...": "正在从网络获取..."
+    "Fetching from the web...": "正在从网络获取...",
+    "pending=\"Loading skill...\"": "pending=\"正在加载技能...\"",
+    "Skill \"{props.input.name}\"": "技能 \"{props.input.name}\"",
+    "? \"match\" : \"matches\"": "? \"匹配\" : \"匹配\""
   }
 }

@@ -45,6 +45,9 @@ func (b *Builder) CheckEnvironment() error {
 }
 
 // PatchBunVersionCheck 修复 Bun 版本检查
+// 支持两种上游模式：
+//   - 旧版 (<=1.1.36): if (process.versions.bun !== expectedBunVersion) — 严格相等
+//   - 新版 (>=1.1.37): semver.satisfies(process.versions.bun, expectedBunVersionRange) — 语义化范围
 func (b *Builder) PatchBunVersionCheck() (bool, error) {
 	scriptPath := filepath.Join(b.opencodeDir, "packages", "script", "src", "index.ts")
 
@@ -58,17 +61,48 @@ func (b *Builder) PatchBunVersionCheck() (bool, error) {
 	}
 	content := string(contentBytes)
 
-	// 检查是否已经修复过
-	if strings.Contains(content, "isCompatible") {
+	// 检查是否已经修复过（旧版补丁标记 或 新版补丁标记）
+	if strings.Contains(content, "isCompatible") || strings.Contains(content, "// [opencode-i18n] version check bypassed") {
 		return true, nil
 	}
 
+	patchApplied := false
+
+	// === 模式 1: 新版 semver 检查 (>=1.1.37) ===
+	semverCheck := "if (!semver.satisfies(process.versions.bun, expectedBunVersionRange))"
+	if strings.Contains(content, semverCheck) {
+		// 将 semver 检查替换为始终通过 + 仅打印警告
+		lines := strings.Split(content, "\n")
+		var newLines []string
+
+		for i := 0; i < len(lines); i++ {
+			line := lines[i]
+			if strings.Contains(line, semverCheck) {
+				// 替换为警告而非报错
+				newLines = append(newLines, "// [opencode-i18n] version check bypassed: allow any bun version >= required")
+				newLines = append(newLines, "if (!semver.satisfies(process.versions.bun, expectedBunVersionRange)) {")
+				newLines = append(newLines, "  console.warn(`[opencode-i18n] Warning: expected bun@${expectedBunVersionRange}, using bun@${process.versions.bun}`)")
+				newLines = append(newLines, "}")
+				// 跳过原来的 throw 和 }
+				i += 2
+				patchApplied = true
+			} else {
+				newLines = append(newLines, line)
+			}
+		}
+
+		if patchApplied {
+			if err := os.WriteFile(scriptPath, []byte(strings.Join(newLines, "\n")), 0644); err != nil {
+				return false, err
+			}
+			return true, nil
+		}
+	}
+
+	// === 模式 2: 旧版严格相等检查 (<=1.1.36) ===
 	strictCheck := "if (process.versions.bun !== expectedBunVersion)"
-	if !strings.Contains(content, strictCheck) {
-		return true, nil
-	}
-
-	newCode := `// 放宽版本检查：允许使用相同或更高版本的 Bun (1.3.5+)
+	if strings.Contains(content, strictCheck) {
+		newCode := `// [opencode-i18n] version check bypassed: 放宽版本检查，允许使用相同或更高版本的 Bun
 const [expectedMajor, expectedMinor, expectedPatch] = expectedBunVersion.split(".").map(Number)
 const [actualMajor, actualMinor, actualPatch] = (process.versions.bun || "0.0.0").split(".").map(Number)
 
@@ -81,30 +115,30 @@ if (!isCompatible) {
   throw new Error(` + "`" + `This script requires bun@${expectedBunVersion}+, but you are using bun@${process.versions.bun}` + "`" + `)
 }`
 
-	// 简单的字符串替换
-	lines := strings.Split(content, "\n")
-	var newLines []string
-	patchApplied := false
+		lines := strings.Split(content, "\n")
+		var newLines []string
 
-	for i := 0; i < len(lines); i++ {
-		line := lines[i]
-		if strings.Contains(line, strictCheck) {
-			newLines = append(newLines, newCode)
-			// 跳过原来的 throw 和 }
-			i += 2
-			patchApplied = true
-		} else {
-			newLines = append(newLines, line)
+		for i := 0; i < len(lines); i++ {
+			line := lines[i]
+			if strings.Contains(line, strictCheck) {
+				newLines = append(newLines, newCode)
+				// 跳过原来的 throw 和 }
+				i += 2
+				patchApplied = true
+			} else {
+				newLines = append(newLines, line)
+			}
+		}
+
+		if patchApplied {
+			if err := os.WriteFile(scriptPath, []byte(strings.Join(newLines, "\n")), 0644); err != nil {
+				return false, err
+			}
+			return true, nil
 		}
 	}
 
-	if patchApplied {
-		if err := os.WriteFile(scriptPath, []byte(strings.Join(newLines, "\n")), 0644); err != nil {
-			return false, err
-		}
-		return true, nil
-	}
-
+	// 没有找到任何已知的版本检查模式，可能已被上游移除或使用新方式
 	return false, nil
 }
 
@@ -181,14 +215,14 @@ func (b *Builder) Build(platform string, silent bool) error {
 	if err := os.Chdir(b.buildDir); err != nil {
 		return err
 	}
-    
-    // 尝试绕过 SSL 验证错误
-    // 这是一个临时修复，因为 models.dev 的证书在某些环境中可能验证失败
-    env := os.Environ()
-    env = append(env, "BUN_TLS_REJECT_UNAUTHORIZED=0")
-    env = append(env, "NODE_TLS_REJECT_UNAUTHORIZED=0")
 
-    return ExecLiveEnv(b.bunPath, args, env)
+	// 尝试绕过 SSL 验证错误
+	// 这是一个临时修复，因为 models.dev 的证书在某些环境中可能验证失败
+	env := os.Environ()
+	env = append(env, "BUN_TLS_REJECT_UNAUTHORIZED=0")
+	env = append(env, "NODE_TLS_REJECT_UNAUTHORIZED=0")
+
+	return ExecLiveEnv(b.bunPath, args, env)
 }
 
 // GetDistPath 获取编译产物路径
