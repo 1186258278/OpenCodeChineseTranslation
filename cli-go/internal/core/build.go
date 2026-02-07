@@ -207,31 +207,14 @@ func (b *Builder) Build(platform string, silent bool) error {
 		return err
 	}
 
-	// 构建脚本路径：packages/opencode/script/build.ts
-	buildScript := filepath.Join(b.buildDir, "script", "build.ts")
-
-	// 关键：必须从 monorepo 根目录执行构建脚本（与上游 CI 一致）
-	// 上游 CI 从根目录运行: ./packages/opencode/script/build.ts
-	// 这确保 Bun workspace 的 node_modules 解析正确
-	// 如果从 packages/opencode 运行，workspace hoist 会导致依赖找不到
+	// Bun workspace hoist 修复：
+	// 上游 monorepo 中 bun install 将 @opentui/core 等包 hoist 到根 node_modules，
+	// 但构建脚本 (build.ts) 用 fs.realpathSync 在 packages/opencode/node_modules/ 下查找。
+	// 需要确保关键包在本地 node_modules 可访问（通过 symlink 到根）。
 	repoRoot := filepath.Dir(filepath.Dir(b.buildDir))
-	rootPkgJSON := filepath.Join(repoRoot, "package.json")
+	b.ensureWorkspaceLinks(repoRoot, silent)
 
-	var execDir string
-	var args []string
-
-	if Exists(rootPkgJSON) {
-		// monorepo 模式：从根目录执行构建脚本
-		execDir = repoRoot
-		args = []string{buildScript}
-		if !silent {
-			fmt.Println("检测到 monorepo，将从根目录执行构建脚本")
-		}
-	} else {
-		// 独立包模式：从 packages/opencode 执行
-		execDir = b.buildDir
-		args = []string{"run", "script/build.ts"}
-	}
+	args := []string{"run", "script/build.ts"}
 
 	if platform != "" {
 		// 简单的平台匹配逻辑
@@ -257,10 +240,10 @@ func (b *Builder) Build(platform string, silent bool) error {
 	}
 
 	if !silent {
-		fmt.Printf("执行: %s %s (工作目录: %s)\n", b.bunPath, strings.Join(args, " "), execDir)
+		fmt.Printf("执行: %s %s\n", b.bunPath, strings.Join(args, " "))
 	}
 
-	if err := os.Chdir(execDir); err != nil {
+	if err := os.Chdir(b.buildDir); err != nil {
 		return err
 	}
 
@@ -305,6 +288,52 @@ func (b *Builder) Build(platform string, silent bool) error {
 	}
 
 	return nil
+}
+
+// ensureWorkspaceLinks 确保 workspace hoist 的包在本地 node_modules 可访问
+// Bun workspace 将依赖 hoist 到根 node_modules，但构建脚本通过 fs.realpathSync
+// 在 packages/opencode/node_modules/ 下查找。此方法创建必要的 symlink。
+func (b *Builder) ensureWorkspaceLinks(repoRoot string, silent bool) {
+	rootNodeModules := filepath.Join(repoRoot, "node_modules")
+	localNodeModules := filepath.Join(b.buildDir, "node_modules")
+
+	if !DirExists(rootNodeModules) || !DirExists(localNodeModules) {
+		return
+	}
+
+	// 需要确保可访问的关键包（构建脚本通过绝对路径引用）
+	criticalPackages := []string{"@opentui/core", "@opentui/solid"}
+
+	for _, pkg := range criticalPackages {
+		localPkg := filepath.Join(localNodeModules, pkg)
+		rootPkg := filepath.Join(rootNodeModules, pkg)
+
+		if Exists(localPkg) {
+			continue // 已存在（可能是 symlink 或真实目录）
+		}
+
+		if !DirExists(rootPkg) {
+			continue // 根目录也没有
+		}
+
+		// 确保父目录存在（@opentui 这样的 scoped 包需要）
+		parentDir := filepath.Dir(localPkg)
+		if err := EnsureDir(parentDir); err != nil {
+			if !silent {
+				fmt.Printf("警告: 创建目录 %s 失败: %v\n", parentDir, err)
+			}
+			continue
+		}
+
+		// 创建 symlink
+		if err := os.Symlink(rootPkg, localPkg); err != nil {
+			if !silent {
+				fmt.Printf("警告: 创建 symlink %s -> %s 失败: %v\n", localPkg, rootPkg, err)
+			}
+		} else if !silent {
+			fmt.Printf("  已创建 workspace link: %s -> %s\n", pkg, rootPkg)
+		}
+	}
 }
 
 // GetDistPath 获取编译产物路径
