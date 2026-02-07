@@ -143,15 +143,39 @@ if (!isCompatible) {
 }
 
 // InstallDependencies 安装依赖
+// 上游是 monorepo 结构，需要从仓库根目录安装以解析 workspace 依赖
 func (b *Builder) InstallDependencies(silent bool) error {
 	if !silent {
 		fmt.Println("正在安装依赖...")
 	}
 
+	// 先在 monorepo 根目录安装（如果存在根 package.json）
+	// 上游仓库根目录 = buildDir 的祖父目录 (packages/opencode -> root)
+	repoRoot := filepath.Dir(filepath.Dir(b.buildDir))
+	rootPkgJSON := filepath.Join(repoRoot, "package.json")
+
+	if Exists(rootPkgJSON) {
+		rootNodeModules := filepath.Join(repoRoot, "node_modules")
+		if !Exists(rootNodeModules) {
+			if !silent {
+				fmt.Printf("在 monorepo 根目录安装依赖: %s\n", repoRoot)
+			}
+			if err := os.Chdir(repoRoot); err != nil {
+				return fmt.Errorf("切换到 monorepo 根目录失败: %w", err)
+			}
+			if err := ExecLive(b.bunPath, "install"); err != nil {
+				return fmt.Errorf("monorepo 根目录 bun install 失败: %w", err)
+			}
+		} else if !silent {
+			fmt.Println("monorepo 根目录依赖已存在")
+		}
+	}
+
+	// 再在 packages/opencode 安装（确保 workspace 本地依赖就绪）
 	nodeModulesPath := filepath.Join(b.buildDir, "node_modules")
 	if Exists(nodeModulesPath) {
 		if !silent {
-			fmt.Println("依赖已存在，跳过安装")
+			fmt.Println("包级依赖已存在，跳过安装")
 		}
 		return nil
 	}
@@ -222,7 +246,41 @@ func (b *Builder) Build(platform string, silent bool) error {
 	env = append(env, "BUN_TLS_REJECT_UNAUTHORIZED=0")
 	env = append(env, "NODE_TLS_REJECT_UNAUTHORIZED=0")
 
-	return ExecLiveEnv(b.bunPath, args, env)
+	if err := ExecLiveEnv(b.bunPath, args, env); err != nil {
+		return fmt.Errorf("bun 构建脚本执行失败: %w", err)
+	}
+
+	// 构建后验证：检查产物是否存在
+	if platform != "" {
+		distPath := b.GetDistPath(platform)
+		if !Exists(distPath) {
+			// 列出 dist 目录内容，帮助诊断
+			distDir := filepath.Join(b.buildDir, "dist")
+			if DirExists(distDir) {
+				fmt.Printf("构建产物未找到: %s\n", distPath)
+				fmt.Println("dist 目录内容:")
+				entries, _ := os.ReadDir(distDir)
+				for _, e := range entries {
+					fmt.Printf("  %s (dir=%v)\n", e.Name(), e.IsDir())
+					if e.IsDir() {
+						subEntries, _ := os.ReadDir(filepath.Join(distDir, e.Name()))
+						for _, se := range subEntries {
+							fmt.Printf("    %s\n", se.Name())
+						}
+					}
+				}
+			} else {
+				fmt.Printf("dist 目录不存在: %s\n", distDir)
+				fmt.Println("构建可能完全失败，请检查上方 bun 输出日志")
+			}
+			return fmt.Errorf("构建产物验证失败: 期望路径 %s 不存在", distPath)
+		}
+		if !silent {
+			fmt.Printf("✓ 构建产物已验证: %s\n", distPath)
+		}
+	}
+
+	return nil
 }
 
 // GetDistPath 获取编译产物路径

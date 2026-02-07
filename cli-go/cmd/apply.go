@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"opencode-cli/internal/core"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -17,13 +18,13 @@ var applyCmd = &cobra.Command{
 		i18n, err := core.NewI18n()
 		if err != nil {
 			fmt.Printf("错误: 初始化失败: %v\n", err)
-			return
+			os.Exit(1)
 		}
 
 		configs, err := i18n.LoadConfig()
 		if err != nil {
 			fmt.Printf("错误: 加载配置失败: %v\n", err)
-			return
+			os.Exit(1)
 		}
 
 		if !silent {

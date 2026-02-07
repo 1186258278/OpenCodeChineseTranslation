@@ -228,7 +228,20 @@ jobs:
         env:
           OPENCODE_SOURCE_DIR: ${{ github.workspace }}/opencode-zh-CN
         run: |
+          echo "=== Build Environment ==="
+          echo "Platform: ${{ matrix.platform }}"
+          echo "OPENCODE_SOURCE_DIR: $OPENCODE_SOURCE_DIR"
+          echo "Bun version: $(bun --version)"
+          echo ""
+          echo "=== Upstream repo structure ==="
+          ls -la opencode-zh-CN/ || true
+          ls -la opencode-zh-CN/packages/ || true
+          echo ""
+          echo "=== Starting build ==="
           ./opencode-cli build --platform ${{ matrix.platform }} --deploy=false
+          echo ""
+          echo "=== Post-build: dist directory ==="
+          find opencode-zh-CN/packages/opencode/dist -type f 2>/dev/null | head -30 || echo "dist directory not found"
 
       - name: Package
         env:

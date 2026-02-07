@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"opencode-cli/internal/core"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -15,7 +16,9 @@ var buildCmd = &cobra.Command{
 		deploy, _ := cmd.Flags().GetBool("deploy")
 		silent, _ := cmd.Flags().GetBool("silent")
 
-		RunBuild(platform, deploy, silent)
+		if err := RunBuild(platform, deploy, silent); err != nil {
+			os.Exit(1)
+		}
 	},
 }
 
