@@ -194,7 +194,7 @@ opencode-cli download
 **本地编译**：
 - Git (用于拉取源码)
 - Node.js 18+ (OpenCode 依赖)
-- Bun 1.3+ (构建工具)
+- Bun 1.3.8+ (构建工具，需与上游 OpenCode 版本匹配)
 
 > 没装这些？运行 `opencode-cli env-install` 一键搞定。
 

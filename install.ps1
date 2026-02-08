@@ -75,7 +75,7 @@ if (Test-Path $localFile) {
     # 4. 在线下载
     Write-Color "`n[2/4] 获取版本信息..." "Yellow"
     $repo = "1186258278/OpenCodeChineseTranslation"
-    $tagName = "v8.6.1" # 默认版本作为后备
+    $tagName = "v8.7.0" # 默认版本作为后备
 
     if ($Version) {
         $tagName = $Version

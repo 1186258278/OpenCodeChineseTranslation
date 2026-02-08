@@ -32,7 +32,7 @@ var envInstallCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(envInstallCmd)
-	
+
 	// 非交互模式 flags
 	envInstallCmd.Flags().BoolP("yes", "y", false, "自动确认，跳过交互提示")
 	envInstallCmd.Flags().BoolP("all", "a", false, "一键安装全部缺失环境")
@@ -79,14 +79,14 @@ func runEnvInstall(yes bool, all bool, npmVersion string) {
 	fmt.Println("")
 
 	// ========== 非交互模式处理 ==========
-	
+
 	// 优先处理 --npm-version
 	if npmVersion != "" {
 		fmt.Printf("▶ 非交互模式: 安装 npm@%s\n", npmVersion)
 		installNpmVersionDirect(npmVersion)
 		return
 	}
-	
+
 	// 处理 --all
 	if all {
 		if allInstalled {
@@ -97,7 +97,7 @@ func runEnvInstall(yes bool, all bool, npmVersion string) {
 		installAllMissing(envList)
 		return
 	}
-	
+
 	// 处理 --yes (自动选择推荐选项)
 	if yes {
 		if allInstalled {
@@ -110,7 +110,7 @@ func runEnvInstall(yes bool, all bool, npmVersion string) {
 	}
 
 	// ========== 交互模式 ==========
-	
+
 	if allInstalled {
 		fmt.Println("✓ 所有编译环境已就绪！")
 		fmt.Println("  您可以直接运行 'opencode-cli build' 进行编译。")
@@ -123,7 +123,7 @@ func runEnvInstall(yes bool, all bool, npmVersion string) {
 	fmt.Println("  [1] 一键安装全部缺失环境 (推荐)")
 	fmt.Println("  [2] 仅安装 Git")
 	fmt.Println("  [3] 仅安装 Node.js (LTS)")
-	fmt.Println("  [4] 仅安装 Bun (v1.3.5+)")
+	fmt.Println("  [4] 仅安装 Bun (v1.3.8+)")
 	fmt.Println("  [5] 安装/更新 npm 到指定版本")
 	fmt.Println("  [0] 返回")
 	fmt.Println("")
@@ -170,7 +170,7 @@ func checkAllEnvironments() []EnvStatus {
 			Name:      "Bun",
 			Installed: checkCommandExists("bun"),
 			Version:   getCommandVersion("bun", "--version"),
-			Required:  "v1.3.5+",
+			Required:  "v1.3.8+",
 		},
 	}
 }
@@ -353,7 +353,7 @@ func installNodeJS() {
 
 // installBun 安装 Bun
 func installBun() {
-	fmt.Println("▶ 安装 Bun (v1.3.5+)...")
+	fmt.Println("▶ 安装 Bun (v1.3.8+)...")
 
 	switch runtime.GOOS {
 	case "windows":

@@ -94,7 +94,7 @@ func getStatus() tui.StatusInfo {
 		I18nExists:    i18nExists,
 		BinaryExists:  binaryExists,
 		BunVersion:    bunVersion,
-		BunRecommend:  "1.3.5",
+		BunRecommend:  "1.3.8",
 		CheckComplete: false, // 暂时不检测更新
 	}
 }

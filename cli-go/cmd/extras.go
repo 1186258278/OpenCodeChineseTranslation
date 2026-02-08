@@ -527,7 +527,7 @@ func runFixBun() {
 	fmt.Println("▶ 校准 Bun 版本")
 
 	// 获取推荐版本
-	recommendedVersion := "1.3.5"
+	recommendedVersion := "1.3.8"
 
 	// 获取源码目录
 	opencodeDir, err := core.GetOpencodeDir()

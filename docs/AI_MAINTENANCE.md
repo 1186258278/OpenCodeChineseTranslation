@@ -87,7 +87,7 @@ opencodenpm env
 | 工具 | 版本要求 | 说明 |
 |------|----------|------|
 | Node.js | >= 18.0.0 | JavaScript 运行时 |
-| Bun | >= 1.3.0 | 快速 JavaScript 运行时 |
+| Bun | >= 1.3.8 | 快速 JavaScript 运行时 (需与上游 OpenCode 匹配) |
 | Git | latest | 版本控制 |
 
 ### 3. 完整工作流

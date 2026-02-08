@@ -113,7 +113,7 @@ else
     # 5. 在线下载
     echo -e "\n${YELLOW}[2/4] 获取版本信息...${NC}"
     REPO="1186258278/OpenCodeChineseTranslation"
-    VERSION="v8.6.1" # 默认 fallback
+    VERSION="v8.7.0" # 默认 fallback
 
     if [ -n "$TARGET_VERSION" ]; then
         VERSION="$TARGET_VERSION"

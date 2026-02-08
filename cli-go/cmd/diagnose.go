@@ -328,7 +328,7 @@ func checkBuildEnvironment() []DiagnoseIssue {
 		issues = append(issues, DiagnoseIssue{
 			ID:          "missing-bun",
 			Name:        "未安装 Bun",
-			Description: "编译 OpenCode 需要 Bun 构建工具",
+			Description: "编译 OpenCode 需要 Bun 1.3.8+ 构建工具",
 			Severity:    "warning",
 			FixDesc:     "运行 opencode-cli env-install 安装",
 		})
